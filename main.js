@@ -71,7 +71,7 @@ async function startCycle() {
 
     console.log(`[Detail] Scraped Job ${i + 1}:`, jobList[i]);
 
-    await postJobToBackend(jobList[i]);
+    // await postJobToBackend(jobList[i]);
 
     await wait(2000);
   }
@@ -79,19 +79,26 @@ async function startCycle() {
   console.log('\n[Summary] Scraped:\n');
   jobList.forEach((j, i) => {
     console.log(`[${i + 1}] ${j.title}`);
-    console.log(`  URL: ${j.url}`);
-    console.log(`  Posted: ${j.postedDate}`);
-    console.log(`  Category: ${j.mainCategory}`);
-    console.log(`  Duration: ${j.projectDuration}`);
-    console.log(`  Experience: ${j.experienceLevel}`);
-    console.log(`  Payment: ${j.paymentVerified}`);
-    console.log(`  Country: ${j.clientCountry}`);
+    console.log(`  Job URL: ${j.url}`);
+    console.log(`  Job Posted At: ${j.postedDate}`);
+    console.log(`  Job Main Category: ${j.mainCategory}`);
+    console.log(`  Job Duration: ${j.projectDuration}`);
+    console.log(`  Job Required Experience: ${j.experienceLevel}`);
+    console.log(`  Job Pricing Model: ${j.pricingModel}`);
+    console.log(`  Job Min Budget: ${j.minRange}`);
+    console.log(`  Job Max Budget: ${j.maxRange}`);
+    console.log(`  Job Description:\n${j.description?.substring(0, 300)}...\n`);
+    console.log(`  Client Country: ${j.clientCountry}`);
+    console.log(`  Client City: ${j.clientCity}`);
     console.log(`  Client Total Spend: ${j.clientSpend}`);
     console.log(`  Client Jobs Posted: ${j.clientJobsPosted}`);
+    console.log(`  Client Payment Verified ? : ${j.paymentVerified}`);
+    console.log(`  Client Phone Verified ? : ${j.paymentVerified}`);
     console.log(`  Client Hires: ${j.clientHires}`);
     console.log(`  Client Hire Rate: ${j.clientHireRate}`);
+    console.log(`  Client Average Hourly Rate: ${j.clientAverageHourlyRate}`);
     console.log(`  Client Member Since: ${j.clientMemberSince}`);
-    console.log(`  Description:\n${j.description?.substring(0, 300)}...\n`);
+
   });
 
   const delay = 20000 + Math.floor(Math.random() * 20000);
@@ -246,6 +253,13 @@ async function dumpAndExtractJobDetails(index, originalUrl) {
     return match ? match[1].trim() : '';
   };
 
+  const extractClientCity = () => {
+    const match = rawHtml.match(
+      /<li[^>]*data-qa="client-location"[^>]*>[\s\S]*?<div[^>]*>\s*<span[^>]*>([^<]*)<\/span>/i
+    );
+    return match ? match[1].trim() : '';
+  };
+
   const extractClientSpend = () => {
     const match = rawHtml.match(/>([^<>]+)<[^<]*total spent/i);
     return match ? match[1].trim().replace(/\s+/g, '') : '';
@@ -273,6 +287,10 @@ async function dumpAndExtractJobDetails(index, originalUrl) {
     return /payment method verified/i.test(rawHtml);
   };
 
+  const extractPhoneVerified = () => {
+    return /phone number verified/i.test(rawHtml);
+  };
+
   const extractClientRatingAndReviews = () => {
     const match = rawHtml.match(/>(\d\.\d{1,2}) of (\d+) reviews?\s*</i);
     if (!match) return { clientRating: '', clientReviews: '' };
@@ -287,9 +305,42 @@ async function dumpAndExtractJobDetails(index, originalUrl) {
     return match ? match[1].trim() : '';
   };
 
+  const extractClientAverageHourlyRate = () => {
+    const match = rawHtml.match(/<strong[^>]*data-qa="client-hourly-rate"[^>]*>\s*\$([\d,.]+)/i);
+    if (!match) return '';
+    return parseFloat(match[1].replace(/,/g, '')); // Remove comma, convert to float
+  };
+
+
+  const extractProjectPricingModel = () => {
+    if (rawHtml.includes('Fixed-price</div>')) return 'Fixed';
+    if (rawHtml.includes('Hourly</div>')) return 'Hourly';
+    return '';
+  };
+
+  const extractBudgetRange = () => {
+    const regex = /<[^>]+data-test="BudgetAmount"[^>]*>([^<]+)<\/[^>]+>/g;
+    const matches = [...rawHtml.matchAll(regex)].map(m => m[1].replace(/[$,]/g, '').trim());
+
+    if (matches.length === 1) {
+      const value = parseFloat(matches[0]) || '';
+      return { minRange: value, maxRange: value };
+    }
+
+    if (matches.length >= 2) {
+      return {
+        minRange: parseFloat(matches[0]) || '',
+        maxRange: parseFloat(matches[1]) || ''
+      };
+    }
+
+    return { minRange: '', maxRange: '' };
+  };
+
 
   const { title, mainCategory } = extractTitleAndCategory();
   const { clientRating, clientReviews } = extractClientRatingAndReviews();
+  const { minRange, maxRange } = extractBudgetRange();
 
   return {
     title,
@@ -300,13 +351,19 @@ async function dumpAndExtractJobDetails(index, originalUrl) {
     projectType: extractProjectType(),
     postedDate: calculatePostedDate(),
     requiredConnects: extractRequiredConnects(),
+    pricingModel: extractProjectPricingModel(),
+    minRange: minRange,
+    maxRange: maxRange,
     clientCountry: extractClientCountry(),
+    clientCity: extractClientCity(),
     clientSpend: extractClientSpend(),
     clientJobsPosted: extractClientJobsPosted(),
     clientHires: extractClientHires(),
     clientHireRate: extractHireRate(),
+    clientAverageHourlyRate: extractClientAverageHourlyRate(),
     clientMemberSince: extractClientMemberSince(),
     clientPaymentVerified: extractPaymentVerified(),
+    clientPhoneVerified: extractPhoneVerified(),
     clientRating,
     clientReviews
   };
