@@ -402,7 +402,7 @@ async function postJobToBackend(jobData) {
   }
 }
 
-
+//scrapper extraction code finalized
 
 
 
