@@ -266,15 +266,16 @@ async function dumpAndExtractJobDetails(index, originalUrl) {
   };
 
 
-  // const extractClientHires = () => {
-  //   const match = rawHtml.match(/<span[^>]*>\s*(\d+)\s*<\/span>\s*hire/i);
-  //   return match ? match[1].trim() : '';
-  // };
-
   const extractClientHires = () => {
-    const match = rawHtml.match(/<strong[^>]*>\s*(\d+)\s*<\/strong>\s*<span[^>]*>\s*hires\s*<\/span>/i);
-    return match ? match[1].trim() : '';
+    const match = rawHtml.match(/<div[^>]*data-qa="client-hires"[^>]*>(.*?)<\/div>/i);
+    if (match) {
+      const text = match[1].replace(/\s+/g, ' ').trim();
+      const hiresMatch = text.match(/(\d+)\s+hires?/i);
+      return hiresMatch ? parseInt(hiresMatch[1], 10) : '';
+    }
+    return '';
   };
+
 
 
   const extractHireRate = () => {
@@ -297,24 +298,22 @@ async function dumpAndExtractJobDetails(index, originalUrl) {
     return /phone number verified/i.test(rawHtml);
   };
 
-  // const extractClientRatingAndReviews = () => {
-  //   const match = rawHtml.match(/>(\d\.\d{1,2}) of (\d+) reviews?\s*</i);
-  //   if (!match) return { clientRating: '', clientReviews: '' };
-  //   return {
-  //     clientRating: match[1],
-  //     clientReviews: match[2]
-  //   };
-  // };
-
-  const extractClientRatingAndReviews = () => {
-    const ratingMatch = rawHtml.match(/<strong[^>]*class="[^"]*text-success[^"]*"[^>]*>\s*(\d+\.\d{1,2})\s*<\/strong>/i);
-    const reviewsMatch = rawHtml.match(/<span[^>]*>\s*(\d+)\s+reviews\s*<\/span>/i);
-    return {
-      clientRating: ratingMatch ? ratingMatch[1].trim() : '',
-      clientReviews: reviewsMatch ? reviewsMatch[1].trim() : ''
-    };
+  const extractClientRating = () => {
+    const index = rawHtml.indexOf('data-qa="client-location"');
+    if (index === -1) return '';
+    const snippet = rawHtml.slice(Math.max(0, index - 4000), index);
+    const match = snippet.match(/Rating\s+is\s+(\d+(\.\d+)?)/i);
+    return match ? parseFloat(match[1]) : '';
   };
 
+
+  const extractClientReviews = () => {
+    const index = rawHtml.indexOf('data-qa="client-location"');
+    if (index === -1) return '';
+    const snippet = rawHtml.slice(Math.max(0, index - 4000), index);
+    const match = snippet.match(/(\d+)\s+reviews?/i);
+    return match ? parseInt(match[1], 10) : '';
+  };
 
   const extractClientJobsPosted = () => {
     const match = rawHtml.match(/(\d+)\s+jobs\s+posted/i);
@@ -351,11 +350,8 @@ async function dumpAndExtractJobDetails(index, originalUrl) {
 
     return { minRange: null, maxRange: null };
   };
-
-
-
+  
   const { title, mainCategory } = extractTitleAndCategory();
-  const { clientRating, clientReviews } = extractClientRatingAndReviews();
   const { minRange, maxRange } = extractBudgetRange();
 
   return {
@@ -380,8 +376,8 @@ async function dumpAndExtractJobDetails(index, originalUrl) {
     clientMemberSince: extractClientMemberSince(),
     clientPaymentVerified: extractPaymentVerified(),
     clientPhoneVerified: extractPhoneVerified(),
-    clientRating,
-    clientReviews
+    clientRating: extractClientRating(),
+    clientReviews: extractClientReviews()
   };
 }
 
