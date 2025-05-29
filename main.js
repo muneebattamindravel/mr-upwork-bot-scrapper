@@ -267,14 +267,15 @@ async function dumpAndExtractJobDetails(index, originalUrl) {
 
 
   const extractClientHires = () => {
-    const match = rawHtml.match(/<div[^>]*data-qa="client-hires"[^>]*>(.*?)<\/div>/i);
+    const match = rawHtml.match(/<div[^>]*data-qa="client-hires"[^>]*>([\s\S]*?)<\/div>/i);
     if (match) {
-      const text = match[1].replace(/\s+/g, ' ').trim();
+      const text = match[1].replace(/<[^>]*>/g, '').trim(); // Strip inner HTML
       const hiresMatch = text.match(/(\d+)\s+hires?/i);
       return hiresMatch ? parseInt(hiresMatch[1], 10) : '';
     }
     return '';
   };
+
 
 
 
@@ -350,7 +351,7 @@ async function dumpAndExtractJobDetails(index, originalUrl) {
 
     return { minRange: null, maxRange: null };
   };
-  
+
   const { title, mainCategory } = extractTitleAndCategory();
   const { minRange, maxRange } = extractBudgetRange();
 
