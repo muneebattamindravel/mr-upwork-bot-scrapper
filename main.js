@@ -29,7 +29,7 @@ app.whenReady().then(async () => {
     });
   }
 
-  console.log('[Debug] Cookies injected.');
+  console.log('[Debug] Cookies injected. 1');
 
   win = new BrowserWindow({
     width: 1200,
