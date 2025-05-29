@@ -71,7 +71,7 @@ async function startCycle() {
 
     console.log(`[Detail] Scraped Job ${i + 1}:`, jobList[i]);
 
-    // await postJobToBackend(jobList[i]);
+    await postJobToBackend(jobList[i]);
 
     await wait(2000);
   }
