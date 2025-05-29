@@ -266,10 +266,16 @@ async function dumpAndExtractJobDetails(index, originalUrl) {
   };
 
 
+  // const extractClientHires = () => {
+  //   const match = rawHtml.match(/<span[^>]*>\s*(\d+)\s*<\/span>\s*hire/i);
+  //   return match ? match[1].trim() : '';
+  // };
+
   const extractClientHires = () => {
-    const match = rawHtml.match(/<span[^>]*>\s*(\d+)\s*<\/span>\s*hire/i);
+    const match = rawHtml.match(/<strong[^>]*>\s*(\d+)\s*<\/strong>\s*<span[^>]*>\s*hires\s*<\/span>/i);
     return match ? match[1].trim() : '';
   };
+
 
   const extractHireRate = () => {
     const match = rawHtml.match(/>([^<>%]+)%\s*hire rate/i);
@@ -291,14 +297,24 @@ async function dumpAndExtractJobDetails(index, originalUrl) {
     return /phone number verified/i.test(rawHtml);
   };
 
+  // const extractClientRatingAndReviews = () => {
+  //   const match = rawHtml.match(/>(\d\.\d{1,2}) of (\d+) reviews?\s*</i);
+  //   if (!match) return { clientRating: '', clientReviews: '' };
+  //   return {
+  //     clientRating: match[1],
+  //     clientReviews: match[2]
+  //   };
+  // };
+
   const extractClientRatingAndReviews = () => {
-    const match = rawHtml.match(/>(\d\.\d{1,2}) of (\d+) reviews?\s*</i);
-    if (!match) return { clientRating: '', clientReviews: '' };
+    const ratingMatch = rawHtml.match(/<strong[^>]*class="[^"]*text-success[^"]*"[^>]*>\s*(\d+\.\d{1,2})\s*<\/strong>/i);
+    const reviewsMatch = rawHtml.match(/<span[^>]*>\s*(\d+)\s+reviews\s*<\/span>/i);
     return {
-      clientRating: match[1],
-      clientReviews: match[2]
+      clientRating: ratingMatch ? ratingMatch[1].trim() : '',
+      clientReviews: reviewsMatch ? reviewsMatch[1].trim() : ''
     };
   };
+
 
   const extractClientJobsPosted = () => {
     const match = rawHtml.match(/(\d+)\s+jobs\s+posted/i);
