@@ -392,8 +392,7 @@ function decodeHTMLEntities(text) {
 
 async function postJobToBackend(jobData) {
   try {
-    const cleanJob = sanitizeJobData(jobData);
-    const response = await axios.post('http://52.71.253.188:3000/api/jobs/ingest', [cleanJob]);
+    const response = await axios.post('http://52.71.253.188:3000/api/jobs/ingest', [jobData]);
 
     // Use proper fallback if response.data.inserted is undefined
     const insertedCount = response.data?.inserted || 1;
@@ -401,22 +400,6 @@ async function postJobToBackend(jobData) {
   } catch (err) {
     console.error('❌ Failed to post job:', err.message);
   }
-}
-
-
-function sanitizeJobData(job) {
-  const sanitized = { ...job };
-
-  // Replace all null or undefined fields with defaults
-  for (let key in sanitized) {
-    if (sanitized[key] === null || sanitized[key] === undefined) {
-      if (typeof sanitized[key] === 'number') sanitized[key] = 0;
-      else if (typeof sanitized[key] === 'boolean') sanitized[key] = false;
-      else sanitized[key] = '';
-    }
-  }
-
-  return sanitized;
 }
 
 
