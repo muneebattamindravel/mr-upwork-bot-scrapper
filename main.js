@@ -212,6 +212,7 @@ async function dumpAndExtractJobDetails(index, originalUrl) {
     const match = rawHtml.match(/>(\d+\s+\w+)\s+ago</i);
     return match ? match[1].trim() : '';
   };
+  
 
   const calculatePostedDate = () => {
     const text = extractPostedAgoText().toLowerCase();
