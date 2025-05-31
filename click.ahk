@@ -1,4 +1,4 @@
-﻿SetDefaultMouseSpeed, 
+﻿SetDefaultMouseSpeed 10, 
 
 ; Random delay
 Random, delay, 300, 1000
