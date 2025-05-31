@@ -52,8 +52,16 @@ app.whenReady().then(async () => {
 
 async function shouldVisitJob(url) {
   try {
-    const response = await fetch(`http://52.71.253.188:3000/api/jobs/shouldVisit?url=${encodeURIComponent(url)}`);
+    const cleanUrl = url.split('?')[0];
+
+    const response = await fetch('http://52.71.253.188:3000/api/jobs/shouldVisit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: cleanUrl })
+    });
+
     const json = await response.json();
+    console.log(`[Check] shouldVisitJob →`, JSON.stringify(json, null, 2));
     return json.data?.shouldVisit ?? false;
   } catch (err) {
     console.error('[Duplication Check Error]', err.message);
@@ -139,7 +147,7 @@ async function startCycle() {
   console.log('\n[Summary] Scraped:\n');
   jobList.forEach((j, i) => {
     console.log(`[${i + 1}] ${j.title}`);
-    console.log(`  Job URL: ${j.url}`);
+    console.log(`  Job URL: ${j.url.split('?')[0]}`);
     console.log(`  Job Posted At: ${j.postedDate}`);
     console.log(`  Job Main Category: ${j.mainCategory}`);
     console.log(`  Job Duration: ${j.projectDuration}`);
@@ -442,7 +450,7 @@ async function dumpAndExtractJobDetails(index, originalUrl) {
 
   return {
     title,
-    url: originalUrl,
+    url: originalUrl.split('?')[0],
     description: extractDescription(),
     mainCategory,
     experienceLevel: extractExperienceLevel(),
@@ -477,6 +485,8 @@ function decodeHTMLEntities(text) {
 
 async function postJobToBackend(jobData) {
   try {
+
+    jobData.url = jobData.url.split('?')[0];
     const response = await axios.post('http://52.71.253.188:3000/api/jobs/ingest', [jobData]);
 
     // Use proper fallback if response.data.inserted is undefined
@@ -494,6 +504,8 @@ const cleanDollarValue = (val) => {
 
 async function sendHeartbeat({ status, message = '', jobUrl = '' }) {
   try {
+    const cleanURL = jobUrl.split('?')[0]
+
     const res = await fetch('http://52.71.253.188:3000/api/bots/heartbeat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -501,7 +513,7 @@ async function sendHeartbeat({ status, message = '', jobUrl = '' }) {
         botId: process.env.BOT_ID || 'bot-001',
         status,
         message,
-        jobUrl
+        cleanURL
       })
     });
 
