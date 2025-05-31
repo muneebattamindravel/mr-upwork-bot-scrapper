@@ -7,7 +7,20 @@ const axios = require('axios');
 let win;
 let jobList = [];
 
+let currentStatus = 'booting';
+let currentMessage = '';
+let currentJobUrl = '';
+
 app.whenReady().then(async () => {
+
+  setInterval(() => {
+    sendHeartbeat({
+      status: currentStatus,
+      message: currentMessage,
+      jobUrl: currentJobUrl
+    });
+  }, 15000);
+
   const ses = session.defaultSession;
   //mun
   // Load cookies
@@ -504,7 +517,12 @@ const cleanDollarValue = (val) => {
 
 async function sendHeartbeat({ status, message = '', jobUrl = '' }) {
   try {
-    const cleanURL = jobUrl.split('?')[0]
+    // update global values
+    currentStatus = status;
+    currentMessage = message;
+    currentJobUrl = jobUrl;
+
+    const cleanURL = jobUrl?.split('?')[0];
 
     const res = await fetch('http://52.71.253.188:3000/api/bots/heartbeat', {
       method: 'POST',
@@ -527,6 +545,7 @@ async function sendHeartbeat({ status, message = '', jobUrl = '' }) {
     console.error('[Heartbeat Error]', err.message);
   }
 }
+
 
 
 
