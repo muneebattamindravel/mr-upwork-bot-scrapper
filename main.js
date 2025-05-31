@@ -513,7 +513,7 @@ async function sendHeartbeat({ status, message = '', jobUrl = '' }) {
         botId: process.env.BOT_ID || 'bot-001',
         status,
         message,
-        cleanURL
+        jobUrl: cleanURL
       })
     });
 
