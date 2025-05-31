@@ -58,14 +58,19 @@ async function startCycle() {
 
   await win.webContents.executeJavaScript(`
   new Promise(resolve => {
-    const check = () => {
-      const ready = document.readyState === 'complete' && document.querySelector('section.up-card-section');
-      if (ready) resolve(true);
-      else setTimeout(check, 500);
+    const waitForJobs = () => {
+      const isReady = document.readyState === 'complete';
+      const jobLink = document.querySelector('a[data-test="job-tile-title"]');
+      if (isReady && jobLink) {
+        resolve(true);
+      } else {
+        setTimeout(waitForJobs, 300);
+      }
     };
-    check();
+    waitForJobs();
   });
 `);
+
 
   await solveCloudflareIfPresent(win);
   console.log('[Cycle] Scraping feed...');
