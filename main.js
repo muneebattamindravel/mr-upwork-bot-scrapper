@@ -9,7 +9,7 @@ let jobList = [];
 
 app.whenReady().then(async () => {
   const ses = session.defaultSession;
-//mun
+  //mun
   // Load cookies
   const cookiePath = path.join(__dirname, 'upwork_cookies.json');
   const fileContent = fs.readFileSync(cookiePath, 'utf-8').replace(/^\uFEFF/, '');
@@ -52,7 +52,21 @@ app.whenReady().then(async () => {
 
 async function startCycle() {
   await win.loadURL('https://www.upwork.com/nx/search/jobs/?page=1&per_page=50&sort=recency');
-  await wait(8000);
+
+  //await wait(8000);
+
+
+  await win.webContents.executeJavaScript(`
+  new Promise(resolve => {
+    const check = () => {
+      const ready = document.readyState === 'complete' && document.querySelector('section.up-card-section');
+      if (ready) resolve(true);
+      else setTimeout(check, 500);
+    };
+    check();
+  });
+`);
+
   await solveCloudflareIfPresent(win);
   console.log('[Cycle] Scraping feed...');
 
@@ -408,8 +422,8 @@ async function postJobToBackend(jobData) {
 }
 
 const cleanDollarValue = (val) => {
-    if (!val) return 0;
-    return parseFloat(val.toString().replace(/[$,]/g, '').trim()) || 0;
+  if (!val) return 0;
+  return parseFloat(val.toString().replace(/[$,]/g, '').trim()) || 0;
 };
 
 
