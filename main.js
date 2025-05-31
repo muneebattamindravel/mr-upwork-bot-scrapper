@@ -53,24 +53,7 @@ app.whenReady().then(async () => {
 async function startCycle() {
   await win.loadURL('https://www.upwork.com/nx/search/jobs/?page=1&per_page=50&sort=recency');
 
-  //await wait(8000);
-
-
-  await win.webContents.executeJavaScript(`
-  new Promise(resolve => {
-    const waitForJobs = () => {
-      const isReady = document.readyState === 'complete';
-      const jobLink = document.querySelector('a[data-test="job-tile-title"]');
-      if (isReady && jobLink) {
-        resolve(true);
-      } else {
-        setTimeout(waitForJobs, 300);
-      }
-    };
-    waitForJobs();
-  });
-`);
-
+  await wait(4000);
 
   await solveCloudflareIfPresent(win);
   console.log('[Cycle] Scraping feed...');
@@ -157,10 +140,10 @@ async function solveCloudflareIfPresent(win) {
 
   if (isCloudflare) {
     console.log('[Cloudflare] Challenge detected. Running AHK...');
-    await wait(5000);
+    await wait(3000);
     win.focus();
     await runAhkClick();
-    await wait(10000);
+    await wait(7000);
     return await solveCloudflareIfPresent(win);
   } else {
     console.log('[Cloudflare] Passed.');
