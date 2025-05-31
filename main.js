@@ -50,6 +50,18 @@ app.whenReady().then(async () => {
   startCycle();
 });
 
+async function shouldVisitJob(url) {
+  try {
+    const response = await fetch(`http://52.71.253.188:3000/api/jobs/shouldVisit?url=${encodeURIComponent(url)}`);
+    const json = await response.json();
+    return json.data?.shouldVisit ?? false;
+  } catch (err) {
+    console.error('[Duplication Check Error]', err.message);
+    return false;
+  }
+}
+
+
 async function startCycle() {
 
   await sendHeartbeat({ status: 'navigating_feed', message: 'Opening Upwork job feed' });
@@ -503,18 +515,6 @@ async function sendHeartbeat({ status, message = '', jobUrl = '' }) {
     console.error('[Heartbeat Error]', err.message);
   }
 }
-
-async function shouldVisitJob(url) {
-  try {
-    const response = await fetch(`http://52.71.253.188:3000/api/jobs/shouldVisit?url=${encodeURIComponent(url)}`);
-    const json = await response.json();
-    return json.data?.shouldVisit ?? false;
-  } catch (err) {
-    console.error('[Duplication Check Error]', err.message);
-    return false;
-  }
-}
-
 
 
 
