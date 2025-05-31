@@ -132,23 +132,37 @@ async function scrapeFeedJobs() {
 
 async function solveCloudflareIfPresent(win) {
   console.log('[Cloudflare] Checking...');
+
+  // Use a single, more robust detection expression
   const isCloudflare = await win.webContents.executeJavaScript(`
-    document.title.includes("Just a moment") ||
-    !!document.querySelector('form[action*="cdn-cgi/challenge-platform"]') ||
-    document.body.innerText.includes("Checking your browser")
+    (() => {
+      const titleCheck = document.title.toLowerCase().includes("just a moment");
+      const formCheck = !!document.querySelector('form[action*="cdn-cgi/challenge-platform"]');
+      const textCheck = document.body && document.body.innerText.includes("Checking your browser");
+      return titleCheck || formCheck || textCheck;
+    })();
   `);
 
   if (isCloudflare) {
     console.log('[Cloudflare] Challenge detected. Running AHK...');
+
+    // Slightly lower wait time, tuned with your improved AHK
     await wait(3000);
     win.focus();
+
+    // AHK handles mouse wiggle + click + random move now
     await runAhkClick();
-    await wait(7000);
+
+    // Slightly reduced wait, AHK now includes post-click behavior
+    await wait(5000);
+
+    // Recursive check again
     return await solveCloudflareIfPresent(win);
   } else {
     console.log('[Cloudflare] Passed.');
   }
 }
+
 
 function runAhkClick() {
   return new Promise((resolve, reject) => {
