@@ -61,7 +61,7 @@ async function shouldVisitJob(url) {
     });
 
     const json = await response.json();
-    console.log(`[Check] shouldVisitJob →`, JSON.stringify(json, null, 2));
+    // console.log(`[Check] shouldVisitJob →`, JSON.stringify(json, null, 2));
     return json.data?.shouldVisit ?? false;
   } catch (err) {
     console.error('[Duplication Check Error]', err.message);
