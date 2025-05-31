@@ -14,6 +14,6 @@ Sleep, 1000
 Click
 
 ; 🧠 Move mouse to random location (simulate human moving away)
-Random, randX, 200, 1000
-Random, randY, 200, 600
+Random, randX, 200, 1200
+Random, randY, 200, 700
 MouseMove, %randX%, %randY%, 15
