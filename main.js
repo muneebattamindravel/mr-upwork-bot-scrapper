@@ -149,7 +149,7 @@ async function startCycle() {
     status: 'idle',
     message: `Sleeping for ${delay / 1000}s before next cycle`
   });
-  
+
   await wait(delay);
   jobList = [];
   startCycle();
@@ -184,6 +184,9 @@ async function solveCloudflareIfPresent(win) {
   `);
 
   if (isCloudflare) {
+
+    await sendHeartbeat({ status: 'cloudflare_detected', message: 'Cloudflare detected, trying to solve' });
+
     console.log('[Cloudflare] Challenge detected. Running AHK...');
 
     // Slightly lower wait time, tuned with your improved AHK
@@ -200,6 +203,8 @@ async function solveCloudflareIfPresent(win) {
     return await solveCloudflareIfPresent(win);
   } else {
     console.log('[Cloudflare] Passed.');
+
+    await sendHeartbeat({ status: 'cloudflare_passed', message: 'Cloudflare Passed' });
   }
 }
 
