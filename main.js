@@ -64,6 +64,13 @@ async function startCycle() {
 
   for (let i = 0; i < jobList.length; i++) {
     const job = jobList[i];
+
+    const shouldVisit = await shouldVisitJob(job.url);
+    if (!shouldVisit) {
+      console.log(`[Skip] Job ${i + 1} already exists, skipping`);
+      continue;
+    }
+
     console.log(`[Detail] Visiting job ${i + 1}: ${job.url}`);
 
     await sendHeartbeat({
@@ -497,6 +504,16 @@ async function sendHeartbeat({ status, message = '', jobUrl = '' }) {
   }
 }
 
+async function shouldVisitJob(url) {
+  try {
+    const response = await fetch(`http://52.71.253.188:3000/api/jobs/shouldVisit?url=${encodeURIComponent(url)}`);
+    const json = await response.json();
+    return json.data?.shouldVisit ?? false;
+  } catch (err) {
+    console.error('[Duplication Check Error]', err.message);
+    return false;
+  }
+}
 
 
 
