@@ -212,7 +212,6 @@ async function dumpAndExtractJobDetails(index, originalUrl) {
     const match = rawHtml.match(/>(\d+\s+\w+)\s+ago</i);
     return match ? match[1].trim() : '';
   };
-  
 
   const calculatePostedDate = () => {
     const text = extractPostedAgoText().toLowerCase();
@@ -366,15 +365,15 @@ async function dumpAndExtractJobDetails(index, originalUrl) {
     postedDate: calculatePostedDate(),
     requiredConnects: extractRequiredConnects(),
     pricingModel: extractProjectPricingModel(),
-    minRange: minRange,
-    maxRange: maxRange,
+    minRange: cleanDollarValue(minRange),
+    maxRange: cleanDollarValue(maxRange),
     clientCountry: extractClientCountry(),
     clientCity: extractClientCity(),
-    clientSpend: extractClientSpend(),
+    clientSpend: cleanDollarValue(extractClientSpend()),
     clientJobsPosted: extractClientJobsPosted(),
     clientHires: extractClientHires(),
     clientHireRate: extractHireRate(),
-    clientAverageHourlyRate: extractClientAverageHourlyRate(),
+    clientAverageHourlyRate: cleanDollarValue(extractClientAverageHourlyRate()),
     clientMemberSince: extractClientMemberSince(),
     clientPaymentVerified: extractPaymentVerified(),
     clientPhoneVerified: extractPhoneVerified(),
@@ -403,7 +402,10 @@ async function postJobToBackend(jobData) {
   }
 }
 
-//scrapper extraction code finalized
+const cleanDollarValue = (val) => {
+    if (!val) return 0;
+    return parseFloat(val.toString().replace(/[$,]/g, '').trim()) || 0;
+};
 
 
 
