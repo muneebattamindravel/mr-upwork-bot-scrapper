@@ -61,27 +61,36 @@ async function startCycle() {
   await scrapeFeedJobs();
 
   for (let i = 0; i < jobList.length; i++) {
-    const job = jobList[i];
-    console.log(`[Detail] Visiting job ${i + 1}: ${job.url}`);
-    await win.loadURL(job.url);
-    await wait(12000); // safer for detail load
-    await solveCloudflareIfPresent(win);
+  const job = jobList[i];
+  console.log(`[Detail] Visiting job ${i + 1}: ${job.url}`);
 
-    const htmlLengthCheck = await win.webContents.executeJavaScript('document.documentElement.outerHTML.length');
-    if (htmlLengthCheck < 10000) {
-      console.log(`[Warn] Job ${i + 1} page may not be fully loaded. Waiting extra...`);
-      await wait(5000);
-    }
+  await win.loadURL(job.url);
 
-    const details = await dumpAndExtractJobDetails(i, job.url);
-    jobList[i] = { ...job, ...details };
+  // 🔁 Add race between short delay and cloudflare check
+  await Promise.race([
+    wait(2000 + Math.floor(Math.random() * 1000)), // 2-3s max wait
+    solveCloudflareIfPresent(win),                // will exit immediately if not present
+  ]);
 
-    console.log(`[Detail] Scraped Job ${i + 1}:`, jobList[i]);
-
-    await postJobToBackend(jobList[i]);
-
-    await wait(2000);
+  // 🛑 Sanity check – HTML loaded or fallback wait
+  const htmlLengthCheck = await win.webContents.executeJavaScript('document.documentElement.outerHTML.length');
+  if (htmlLengthCheck < 10000) {
+    console.log(`[Warn] Job ${i + 1} page may not be fully loaded. Waiting extra...`);
+    await wait(1500);
   }
+
+  const details = await dumpAndExtractJobDetails(i, job.url);
+  jobList[i] = { ...job, ...details };
+
+  console.log(`[Detail] Scraped Job ${i + 1}:`, jobList[i]);
+
+  await postJobToBackend(jobList[i]);
+
+  // 🔁 Add small randomized delay between jobs to mimic human pacing
+  const delayBetweenJobs = 1000 + Math.floor(Math.random() * 1000); // 1–2s
+  await wait(delayBetweenJobs);
+}
+
 
   console.log('\n[Summary] Scraped:\n');
   jobList.forEach((j, i) => {
