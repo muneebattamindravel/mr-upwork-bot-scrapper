@@ -31,9 +31,14 @@ app.whenReady().then(async () => {
 
   console.log('[Debug] Cookies injected. 1');
 
+  // Get screen dimensions
+  const { width, height } = screen.getPrimaryDisplay().workAreaSize;
+
   win = new BrowserWindow({
-    width: 1200,
-    height: 800,
+    x: 0, // Left aligned
+    y: 0,
+    width: Math.floor(width / 2), // Left half of screen
+    height: height, // Full height
     webPreferences: {
       session: ses,
       preload: path.join(__dirname, 'preload.js'),
