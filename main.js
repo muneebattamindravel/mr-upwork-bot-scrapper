@@ -77,11 +77,11 @@ async function startCycle() {
   for (let i = 0; i < jobList.length; i++) {
     const job = jobList[i];
 
-    const shouldVisit = await shouldVisitJob(job.url);
-    if (!shouldVisit) {
-      console.log(`[Skip] Job ${i + 1} already exists, skipping`);
-      continue;
-    }
+    // const shouldVisit = await shouldVisitJob(job.url);
+    // if (!shouldVisit) {
+    //   console.log(`[Skip] Job ${i + 1} already exists, skipping`);
+    //   continue;
+    // }
 
     console.log(`[Detail] Visiting job ${i + 1}: ${job.url}`);
 
