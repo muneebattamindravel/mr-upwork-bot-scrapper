@@ -51,45 +51,70 @@ app.whenReady().then(async () => {
 });
 
 async function startCycle() {
+
+  await sendHeartbeat({ status: 'navigating_feed', message: 'Opening Upwork job feed' });
   await win.loadURL('https://www.upwork.com/nx/search/jobs/?page=1&per_page=50&sort=recency');
-
   await wait(4000);
-
   await solveCloudflareIfPresent(win);
+  await sendHeartbeat({ status: 'scraping_feed', message: 'Extracting 50 job links' });
+
   console.log('[Cycle] Scraping feed...');
 
   await scrapeFeedJobs();
 
   for (let i = 0; i < jobList.length; i++) {
-  const job = jobList[i];
-  console.log(`[Detail] Visiting job ${i + 1}: ${job.url}`);
+    const job = jobList[i];
+    console.log(`[Detail] Visiting job ${i + 1}: ${job.url}`);
 
-  await win.loadURL(job.url);
+    await sendHeartbeat({
+      status: 'visiting_job_detail',
+      message: job.title,
+      jobUrl: job.url
+    });
 
-  // 🔁 Add race between short delay and cloudflare check
-  await Promise.race([
-    wait(2000 + Math.floor(Math.random() * 1000)), // 2-3s max wait
-    solveCloudflareIfPresent(win),                // will exit immediately if not present
-  ]);
+    await win.loadURL(job.url);
 
-  // 🛑 Sanity check – HTML loaded or fallback wait
-  const htmlLengthCheck = await win.webContents.executeJavaScript('document.documentElement.outerHTML.length');
-  if (htmlLengthCheck < 10000) {
-    console.log(`[Warn] Job ${i + 1} page may not be fully loaded. Waiting extra...`);
-    await wait(1500);
+    // 🔁 Add race between short delay and cloudflare check
+    await Promise.race([
+      wait(2000 + Math.floor(Math.random() * 1000)), // 2-3s max wait
+      solveCloudflareIfPresent(win),                // will exit immediately if not present
+    ]);
+
+    // 🛑 Sanity check – HTML loaded or fallback wait
+    const htmlLengthCheck = await win.webContents.executeJavaScript('document.documentElement.outerHTML.length');
+    if (htmlLengthCheck < 10000) {
+      console.log(`[Warn] Job ${i + 1} page may not be fully loaded. Waiting extra...`);
+      await wait(1500);
+    }
+
+    await sendHeartbeat({
+      status: 'scraping_job',
+      message: `Scraping job ${i + 1} details`,
+      jobUrl: job.url
+    });
+
+    const details = await dumpAndExtractJobDetails(i, job.url);
+    jobList[i] = { ...job, ...details };
+
+    console.log(`[Detail] Scraped Job ${i + 1}:`, jobList[i]);
+
+    await sendHeartbeat({
+      status: 'saving_to_db',
+      message: `Posting job ${i + 1} to backend`,
+      jobUrl: job.url
+    });
+
+    await postJobToBackend(jobList[i]);
+
+    // 🔁 Add small randomized delay between jobs to mimic human pacing
+    const delayBetweenJobs = 1000 + Math.floor(Math.random() * 1000); // 1–2s
+    await wait(delayBetweenJobs);
   }
 
-  const details = await dumpAndExtractJobDetails(i, job.url);
-  jobList[i] = { ...job, ...details };
-
-  console.log(`[Detail] Scraped Job ${i + 1}:`, jobList[i]);
-
-  await postJobToBackend(jobList[i]);
-
-  // 🔁 Add small randomized delay between jobs to mimic human pacing
-  const delayBetweenJobs = 1000 + Math.floor(Math.random() * 1000); // 1–2s
-  await wait(delayBetweenJobs);
-}
+  await sendHeartbeat({
+    status: 'cycle_complete',
+    message: `Cycle complete — scraped ${jobList.length} jobs`
+  });
 
 
   console.log('\n[Summary] Scraped:\n');
@@ -119,6 +144,12 @@ async function startCycle() {
 
   const delay = 20000 + Math.floor(Math.random() * 20000);
   console.log(`[Cycle] Waiting ${delay / 1000}s before next cycle...`);
+
+  await sendHeartbeat({
+    status: 'idle',
+    message: `Sleeping for ${delay / 1000}s before next cycle`
+  });
+  
   await wait(delay);
   jobList = [];
   startCycle();
@@ -437,6 +468,29 @@ const cleanDollarValue = (val) => {
   return parseFloat(val.toString().replace(/[$,]/g, '').trim()) || 0;
 };
 
+async function sendHeartbeat({ status, message = '', jobUrl = '' }) {
+  try {
+    const res = await fetch('http://52.71.253.188:3000/api/bots/heartbeat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        botId: process.env.BOT_ID || 'bot-001',
+        status,
+        message,
+        jobUrl
+      })
+    });
+
+    const json = await res.json();
+    if (!json.success) {
+      console.warn(`[Heartbeat Failed] ${json.message}`);
+    } else {
+      console.log(`[✅ Heartbeat] ${status} — ${message}`);
+    }
+  } catch (err) {
+    console.error('[Heartbeat Error]', err.message);
+  }
+}
 
 
 
