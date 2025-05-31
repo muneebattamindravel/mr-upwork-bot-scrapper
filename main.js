@@ -9,7 +9,7 @@ let jobList = [];
 
 app.whenReady().then(async () => {
   const ses = session.defaultSession;
-
+//mun
   // Load cookies
   const cookiePath = path.join(__dirname, 'upwork_cookies.json');
   const fileContent = fs.readFileSync(cookiePath, 'utf-8').replace(/^\uFEFF/, '');
