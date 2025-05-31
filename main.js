@@ -1,4 +1,4 @@
-const { app, BrowserWindow, session } = require('electron');
+const { app, BrowserWindow, session, screen } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const { exec } = require('child_process');
