@@ -4,12 +4,16 @@ const path = require('path');
 const { exec } = require('child_process');
 const axios = require('axios');
 
+require('dotenv').config();
+console.log('[BOOT] BOT_ID =', process.env.BOT_ID);
+
 let win;
 let jobList = [];
 
 let currentStatus = 'booting';
 let currentMessage = '';
 let currentJobUrl = '';
+
 
 app.whenReady().then(async () => {
 
