@@ -524,6 +524,8 @@ async function sendHeartbeat({ status, message = '', jobUrl = '' }) {
 
     const cleanURL = jobUrl?.split('?')[0];
 
+    console.log('ENV BOT ID: ' + process.env.BOT_ID)
+
     const res = await fetch('http://52.71.253.188:3000/api/bots/heartbeat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
