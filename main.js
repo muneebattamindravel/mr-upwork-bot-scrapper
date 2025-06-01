@@ -14,6 +14,10 @@ let currentStatus = 'booting';
 let currentMessage = '';
 let currentJobUrl = '';
 
+async function isLoginPage(win) {
+  const currentURL = win.webContents.getURL();
+  return currentURL.includes('/login') || currentURL.includes('account-security');
+}
 
 app.whenReady().then(async () => {
 
@@ -90,9 +94,24 @@ async function shouldVisitJob(url) {
 async function startCycle() {
 
   await sendHeartbeat({ status: 'navigating_feed', message: 'Opening Upwork job feed' });
+
+
   await win.loadURL('https://www.upwork.com/nx/search/jobs/?page=1&per_page=50&sort=recency');
   await wait(4000);
   await solveCloudflareIfPresent(win);
+
+  // 🛑 Check for login redirect
+  if (await isLoginPage(win)) {
+    console.warn('[Login Detected] Bot was redirected to login page!');
+    await sendHeartbeat({
+      status: 'stuck',
+      message: '⚠️ Bot stuck at login — refresh cookies',
+      jobUrl: ''
+    });
+
+    return; // stop bot cycle
+  }
+
   await sendHeartbeat({ status: 'scraping_feed', message: 'Extracting 50 job links' });
 
   console.log('[Cycle] Scraping feed...');
@@ -545,7 +564,7 @@ async function sendHeartbeat({ status, message = '', jobUrl = '' }) {
     if (!json.success) {
       console.warn(`[Heartbeat Failed] ${json.message}`);
     } else {
-      console.log(`[✅ Heartbeat] ${status} — ${message}`);
+      console.log(`🫀 [Heartbeat] Status: "${status}" — ${message}`);
     }
   } catch (err) {
     console.error('[Heartbeat Error]', err.message);
