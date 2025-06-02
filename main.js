@@ -106,7 +106,7 @@ async function startCycle() {
     const encodedQuery = encodeURI(rawQuery.trim()); // handle spaces and unsafe characters
     finalUrl = `${baseUrl}&${encodedQuery}`;
   } else {
-    finalUrl = baseUrl;
+    finalUrl = baseUrl;;
   }
 
   console.log(`🔍 Using Upwork URL: ${finalUrl}`);
