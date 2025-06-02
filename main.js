@@ -96,7 +96,8 @@ async function startCycle() {
   await sendHeartbeat({ status: 'navigating_feed', message: 'Opening Upwork job feed' });
 
 
-  await win.loadURL('https://www.upwork.com/nx/search/jobs/?page=1&per_page=50&sort=recency');
+  // await win.loadURL('https://www.upwork.com/nx/search/jobs/?page=1&per_page=50&sort=recency');
+  await win.loadURL('https://www.upwork.com/nx/search/jobs/?q=game+development&page=1&per_page=50&sort=recency');
   await wait(4000);
   await solveCloudflareIfPresent(win);
 
