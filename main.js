@@ -27,7 +27,7 @@ app.whenReady().then(async () => {
       message: currentMessage,
       jobUrl: currentJobUrl
     });
-  }, 15000);
+  }, 10000);
 
   const ses = session.defaultSession;
   //mun
@@ -404,9 +404,6 @@ async function dumpAndExtractJobDetails(index, originalUrl) {
     }
     return '';
   };
-
-
-
 
   const extractHireRate = () => {
     const match = rawHtml.match(/>([^<>%]+)%\s*hire rate/i);
