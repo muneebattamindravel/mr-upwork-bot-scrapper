@@ -534,9 +534,25 @@ async function postJobToBackend(jobData) {
 }
 
 const cleanDollarValue = (val) => {
-  if (!val) return 0;
-  return parseFloat(val.toString().replace(/[$,]/g, '').trim()) || 0;
+  if (!val || typeof val !== 'string') return 0;
+
+  const cleaned = val.toString().trim().replace(/[$,]/g, '').toUpperCase();
+
+  let multiplier = 1;
+  let numberStr = cleaned;
+
+  if (cleaned.endsWith('K')) {
+    multiplier = 1000;
+    numberStr = cleaned.replace(/K$/, '');
+  } else if (cleaned.endsWith('M')) {
+    multiplier = 1000000;
+    numberStr = cleaned.replace(/M$/, '');
+  }
+
+  const num = parseFloat(numberStr);
+  return isNaN(num) ? 0 : num * multiplier;
 };
+
 
 async function sendHeartbeat({ status, message = '', jobUrl = '' }) {
   try {
