@@ -100,15 +100,13 @@ async function startCycle() {
   const baseUrl = 'https://www.upwork.com/nx/search/jobs/?page=1&per_page=50&sort=recency';
   const rawQuery = process.env.SEARCH_QUERY;
 
-  console.log("Picked Query = " + rawQuery);
-
   let finalUrl;
 
   if (rawQuery && rawQuery.trim() !== '') {
-    const encodedQuery = encodeURI(rawQuery.trim()); // handle spaces and unsafe characters
-    finalUrl = `${baseUrl}&${encodedQuery}`;
+    const encodedQuery = encodeURIComponent(rawQuery.trim()); // encodes "game development" to "game%20development"
+    finalUrl = `${baseUrl}&q=${encodedQuery}`;
   } else {
-    finalUrl = baseUrl;;
+    finalUrl = baseUrl;
   }
 
   console.log(`🔍 Using Upwork URL: ${finalUrl}`);
