@@ -100,6 +100,8 @@ async function startCycle() {
   const baseUrl = 'https://www.upwork.com/nx/search/jobs/?page=1&per_page=50&sort=recency';
   const rawQuery = process.env.SEARCH_QUERY;
 
+  console.log("Picked Query = " + rawQuery);
+
   let finalUrl;
 
   if (rawQuery && rawQuery.trim() !== '') {
