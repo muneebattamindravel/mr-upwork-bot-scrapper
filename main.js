@@ -150,7 +150,18 @@ async function startCycle() {
       jobUrl: job.url
     });
 
-    await win.loadURL(job.url);
+    try {
+      const safeUrl = job.url.split('?')[0];
+      await win.loadURL(safeUrl);
+    } catch (err) {
+      console.error('[❌ Failed to load job page]', job.url, err.message);
+      await sendHeartbeat({
+        status: 'job_load_failed',
+        message: 'Failed to load job URL',
+        jobUrl: job.url
+      });
+      continue; // skip to next job
+    }
 
     // 🔁 Add race between short delay and cloudflare check
     await Promise.race([
@@ -414,16 +425,18 @@ async function dumpAndExtractJobDetails(index, originalUrl) {
     const match = rawHtml.match(/<div[^>]*data-qa="client-hires"[^>]*>([\s\S]*?)<\/div>/i);
     if (match) {
       const text = match[1].replace(/<[^>]*>/g, '').trim(); // Strip inner HTML
-      const hiresMatch = text.match(/(\d+)\s+hires?/i);
-      return hiresMatch ? parseInt(hiresMatch[1], 10) : '';
+      const hiresMatch = text.match(/([\d,]+)\s+hires?/i);
+      return hiresMatch ? parseInt(hiresMatch[1].replace(/,/g, '')) : '';
     }
     return '';
   };
 
+
   const extractHireRate = () => {
-    const match = rawHtml.match(/>([^<>%]+)%\s*hire rate/i);
-    return match ? match[1].trim() : '';
+    const match = rawHtml.match(/>([\d,.]+)%\s*hire rate/i);
+    return match ? parseFloat(match[1].replace(/,/g, '')) : '';
   };
+
 
 
   const extractClientMemberSince = () => {
@@ -453,14 +466,16 @@ async function dumpAndExtractJobDetails(index, originalUrl) {
     const index = rawHtml.indexOf('data-qa="client-location"');
     if (index === -1) return '';
     const snippet = rawHtml.slice(Math.max(0, index - 4000), index);
-    const match = snippet.match(/(\d+)\s+reviews?/i);
-    return match ? parseInt(match[1], 10) : '';
+    const match = snippet.match(/([\d,]+)\s+reviews?/i);
+    return match ? parseInt(match[1].replace(/,/g, '')) : '';
   };
 
+
   const extractClientJobsPosted = () => {
-    const match = rawHtml.match(/(\d+)\s+jobs\s+posted/i);
-    return match ? match[1].trim() : '';
+    const match = rawHtml.match(/([\d,]+)\s+jobs\s+posted/i);
+    return match ? parseInt(match[1].replace(/,/g, '')) : '';
   };
+
 
   const extractClientAverageHourlyRate = () => {
     const match = rawHtml.match(/<strong[^>]*data-qa="client-hourly-rate"[^>]*>\s*\$([\d,.]+)/i);
