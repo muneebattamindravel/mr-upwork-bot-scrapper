@@ -84,7 +84,7 @@ app.post('/stop-bot', (req, res) => {
     botWindowPid = null;
     res.json({ message: '✅ Bot stopped successfully' });
 
-    await updateStatusOnDashboard('stopped', 'Bot stopped from agent');
+    await updateStatusOnDashboard('offline', 'Bot stopped from agent');
   });
 });
 
