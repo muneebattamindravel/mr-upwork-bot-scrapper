@@ -66,23 +66,24 @@ app.post('/start-bot', (req, res) => {
 });
 
 app.post('/stop-bot', (req, res) => {
-  if (!botWindowPid) {
-    return res.json({ message: 'Bot is not running' });
-  }
+  const killCommand = botWindowPid
+    ? `taskkill /PID ${botWindowPid} /T /F`
+    : `taskkill /FI "WINDOWTITLE eq UPWORK_SCRAPER_BOT_WINDOW" /T /F`;
 
-  const killCommand = `taskkill /PID ${botWindowPid} /T /F`;
+  console.log('[🛑 STOP COMMAND]', killCommand);
 
-  exec(killCommand, (err) => {
+  exec(killCommand, (err, stdout, stderr) => {
     if (err) {
-      console.error('[❌ STOP ERROR]', err.message);
-      return res.status(500).json({ message: 'Failed to stop bot', error: err.message });
+      console.error('[❌ STOP ERROR]', stderr || err.message);
+      return res.status(500).json({ message: 'Failed to stop bot', error: stderr || err.message });
     }
 
-    console.log(`[🛑 BOT STOPPED] PID: ${botWindowPid}`);
+    console.log(`[🛑 BOT STOPPED]`);
     botWindowPid = null;
     res.json({ message: '✅ Bot stopped successfully' });
   });
 });
+
 
 const PORT = 4001;
 app.listen(PORT, () => {
