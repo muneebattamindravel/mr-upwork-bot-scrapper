@@ -95,7 +95,7 @@ app.listen(PORT, () => {
 });
 
 async function registerWithDashboard() {
-  const botId = process.env.BOT_TAG || 'unknown-bot';
+  const botId = process.env.BOT_ID || 'unknown-bot';
   const port = PORT;
   const ip = await getLocalIP();
 
