@@ -25,13 +25,36 @@ if (!BOT_TAG) {
 
 console.log(`🤖 Loaded BOT_TAG: ${BOT_TAG}`);
 
-app.get('/status', (req, res) => {
+// ✅ Check if a PID is still alive
+function isPidAlive(pid) {
+  return new Promise((resolve) => {
+    exec(`tasklist /FI "PID eq ${pid}"`, (err, stdout) => {
+      if (err || !stdout.includes(`${pid}`)) {
+        resolve(false);
+      } else {
+        resolve(true);
+      }
+    });
+  });
+}
+
+app.get('/status', async (req, res) => {
+  if (botWindowPid) {
+    const alive = await isPidAlive(botWindowPid);
+    if (!alive) botWindowPid = null;
+  }
+
   res.json({ status: botWindowPid ? 'running' : 'stopped', pid: botWindowPid });
 });
 
-app.post('/start-bot', (req, res) => {
+app.post('/start-bot', async (req, res) => {
   if (botWindowPid) {
-    return res.json({ message: 'Bot already running', pid: botWindowPid });
+    const alive = await isPidAlive(botWindowPid);
+    if (alive) {
+      return res.json({ message: 'Bot already running', pid: botWindowPid });
+    } else {
+      botWindowPid = null;
+    }
   }
 
   spawn('cmd.exe', ['/c', 'start', '', 'cmd', '/k', BAT_PATH], {
@@ -58,7 +81,6 @@ app.post('/start-bot', (req, res) => {
 
         await registerWithDashboard();
         await updateStatusOnDashboard('healthy', 'Bot started from agent');
-
       } else {
         console.warn('[⚠️ BOT STARTED but PID not found]');
         res.json({ message: '⚠️ Bot started, but PID not found' });
