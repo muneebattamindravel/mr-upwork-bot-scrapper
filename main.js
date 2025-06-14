@@ -95,8 +95,6 @@ async function startCycle() {
 
   await sendHeartbeat({ status: 'navigating_feed', message: 'Opening Upwork job feed' });
 
-
-  // await win.loadURL('https://www.upwork.com/nx/search/jobs/?page=1&per_page=50&sort=recency');
   const baseUrl = 'https://www.upwork.com/nx/search/jobs/?page=1&per_page=50&sort=recency';
   const rawQuery = process.env.SEARCH_QUERY;
 
