@@ -4,7 +4,7 @@ const { spawn, exec } = require('child_process');
 const path = require('path');
 const dotenv = require('dotenv');
 const axios = require('axios');
-const os = require('os');
+const https = require('https');
 
 const app = express();
 app.use(cors());
@@ -97,7 +97,7 @@ app.listen(PORT, () => {
 async function registerWithDashboard() {
   const botId = process.env.BOT_ID || 'unknown-bot';
   const port = PORT;
-  const ip = await getLocalIP();
+  const ip = await getPublicIP();
 
   try {
     const res = await axios.post('http://52.71.253.188:3000/api/bots/register', {
@@ -112,15 +112,17 @@ async function registerWithDashboard() {
   }
 }
 
-function getLocalIP() {
-  const interfaces = os.networkInterfaces();
-  for (let name in interfaces) {
-    for (let iface of interfaces[name]) {
-      if (iface.family === 'IPv4' && !iface.internal) {
-        return iface.address;
-      }
-    }
-  }
-  return '127.0.0.1';
+
+function getPublicIP() {
+  return new Promise((resolve, reject) => {
+    https.get('https://api.ipify.org', (res) => {
+      let data = '';
+      res.on('data', chunk => (data += chunk));
+      res.on('end', () => resolve(data.trim()));
+    }).on('error', (err) => {
+      console.error('[IP Fetch Error]', err.message);
+      resolve('127.0.0.1'); // fallback
+    });
+  });
 }
 
