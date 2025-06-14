@@ -10,16 +10,14 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// ✅ Load .env from same folder
 dotenv.config({ path: path.join(__dirname, '.env') });
 
-// ✅ Use bot tag from .env
 const BOT_TAG = process.env.BOT_TAG;
+const BOT_ID = process.env.BOT_ID || 'unknown-bot';
 const BAT_PATH = path.join(__dirname, 'start-bot.bat');
 
 let botWindowPid = null;
 
-// ✅ Sanity check
 if (!BOT_TAG) {
   console.error('❌ BOT_TAG not found in .env. Exiting...');
   process.exit(1);
@@ -36,7 +34,6 @@ app.post('/start-bot', (req, res) => {
     return res.json({ message: 'Bot already running', pid: botWindowPid });
   }
 
-  // ✅ Start .bat in new CMD window
   spawn('cmd.exe', ['/c', 'start', '', 'cmd', '/k', BAT_PATH], {
     detached: true,
     shell: true,
@@ -45,10 +42,9 @@ app.post('/start-bot', (req, res) => {
   console.log('[🟡 BOT LAUNCHING...]');
 
   setTimeout(() => {
-    // ✅ Look for Electron process with matching tag
     const wmicCommand = `wmic process where "CommandLine like '%--bot-tag=${BOT_TAG}%'" get ProcessId`;
 
-    exec(wmicCommand, (err, stdout) => {
+    exec(wmicCommand, async (err, stdout) => {
       if (err) {
         console.error('[❌ PID DETECTION FAILED]', err.message);
         return res.status(500).json({ message: 'Failed to detect PID', error: err.message });
@@ -60,7 +56,8 @@ app.post('/start-bot', (req, res) => {
         console.log(`[✅ BOT STARTED] PID: ${botWindowPid}`);
         res.json({ message: `✅ Bot started`, pid: botWindowPid });
 
-        registerWithDashboard();
+        await registerWithDashboard();
+        await updateStatusOnDashboard('running', 'Bot started from agent');
       } else {
         console.warn('[⚠️ BOT STARTED but PID not found]');
         res.json({ message: '⚠️ Bot started, but PID not found' });
@@ -76,7 +73,7 @@ app.post('/stop-bot', (req, res) => {
 
   console.log('[🛑 STOP COMMAND]', killCommand);
 
-  exec(killCommand, (err, stdout, stderr) => {
+  exec(killCommand, async (err, stdout, stderr) => {
     if (err) {
       console.error('[❌ STOP ERROR]', stderr || err.message);
       return res.status(500).json({ message: 'Failed to stop bot', error: stderr || err.message });
@@ -85,25 +82,26 @@ app.post('/stop-bot', (req, res) => {
     console.log(`[🛑 BOT STOPPED]`);
     botWindowPid = null;
     res.json({ message: '✅ Bot stopped successfully' });
+
+    await updateStatusOnDashboard('stopped', 'Bot stopped from agent');
   });
 });
-
 
 const PORT = 4001;
 app.listen(PORT, () => {
   console.log(`🤖 Bot agent listening at http://localhost:${PORT}`);
 });
 
+// 🔁 Register bot with dashboard (on start only)
 async function registerWithDashboard() {
-  const botId = process.env.BOT_ID || 'unknown-bot';
   const port = PORT;
   const ip = await getPublicIP();
 
   try {
     const res = await axios.post('http://52.71.253.188:3000/api/bots/register', {
-      botId,
+      botId: BOT_ID,
       ip,
-      port
+      port,
     });
 
     console.log('[🔗 Bot Registered]', res.data.message);
@@ -112,17 +110,31 @@ async function registerWithDashboard() {
   }
 }
 
+// 🔁 Update status (on start/stop)
+async function updateStatusOnDashboard(status, message) {
+  try {
+    const res = await axios.post('http://52.71.253.188:3000/api/bots/update-status', {
+      botId: BOT_ID,
+      status,
+      message,
+    });
 
+    console.log(`[📣 Status Updated] ${status}`);
+  } catch (err) {
+    console.error('[❌ Update Status Failed]', err.message);
+  }
+}
+
+// 🌐 Get public IP
 function getPublicIP() {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     https.get('https://api.ipify.org', (res) => {
       let data = '';
       res.on('data', chunk => (data += chunk));
       res.on('end', () => resolve(data.trim()));
     }).on('error', (err) => {
       console.error('[IP Fetch Error]', err.message);
-      resolve('127.0.0.1'); // fallback
+      resolve('127.0.0.1');
     });
   });
 }
-
