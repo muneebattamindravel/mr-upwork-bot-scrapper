@@ -57,7 +57,7 @@ app.post('/start-bot', (req, res) => {
         res.json({ message: `✅ Bot started`, pid: botWindowPid });
 
         await registerWithDashboard();
-        await updateStatusOnDashboard('running', 'Bot started from agent');
+        await updateStatusOnDashboard('healthy', 'Bot started from agent');
 
       } else {
         console.warn('[⚠️ BOT STARTED but PID not found]');
