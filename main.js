@@ -90,7 +90,6 @@ async function shouldVisitJob(url) {
   }
 }
 
-
 async function startCycle() {
 
   await sendHeartbeat({ status: 'navigating_feed', message: 'Opening Upwork job feed' });
@@ -611,7 +610,3 @@ async function sendHeartbeat({ status, message = '', jobUrl = '' }) {
     console.error('[Heartbeat Error]', err.message);
   }
 }
-
-
-
-
