@@ -1,14 +1,29 @@
 const express = require('express');
 const cors = require('cors');
 const { spawn, exec } = require('child_process');
+const path = require('path');
+const dotenv = require('dotenv');
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
+// ✅ Load .env from same folder
+dotenv.config({ path: path.join(__dirname, '.env') });
+
+// ✅ Use bot tag from .env
+const BOT_TAG = process.env.BOT_TAG;
+const BAT_PATH = path.join(__dirname, 'start-bot.bat');
+
 let botWindowPid = null;
 
-const BAT_PATH = 'C:\\Users\\Administrator\\Desktop\\mr-upwork-bot-scrapper\\start-bot.bat';
+// ✅ Sanity check
+if (!BOT_TAG) {
+  console.error('❌ BOT_TAG not found in .env. Exiting...');
+  process.exit(1);
+}
+
+console.log(`🤖 Loaded BOT_TAG: ${BOT_TAG}`);
 
 app.get('/status', (req, res) => {
   res.json({ status: botWindowPid ? 'running' : 'stopped', pid: botWindowPid });
@@ -19,6 +34,7 @@ app.post('/start-bot', (req, res) => {
     return res.json({ message: 'Bot already running', pid: botWindowPid });
   }
 
+  // ✅ Start .bat in new CMD window
   spawn('cmd.exe', ['/c', 'start', '', 'cmd', '/k', BAT_PATH], {
     detached: true,
     shell: true,
@@ -27,7 +43,7 @@ app.post('/start-bot', (req, res) => {
   console.log('[🟡 BOT LAUNCHING...]');
 
   setTimeout(() => {
-    const BOT_TAG = 'ec2-t2micro-scraper-bot'; // can also be loaded from .env
+    // ✅ Look for Electron process with matching tag
     const wmicCommand = `wmic process where "CommandLine like '%--bot-tag=${BOT_TAG}%'" get ProcessId`;
 
     exec(wmicCommand, (err, stdout) => {
