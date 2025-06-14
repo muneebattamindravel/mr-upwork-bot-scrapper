@@ -1,4 +1,3 @@
 @echo off
-title UPWORK_SCRAPER_BOT_WINDOW
 cd /d "C:\Users\Administrator\Desktop\mr-upwork-bot-scrapper"
-npm start
+start "" cmd /k "set BOT_AGENT_LAUNCHED=1 && npm start -- --bot-agent=ec2-micro-1"
