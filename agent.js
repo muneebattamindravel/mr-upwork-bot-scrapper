@@ -3,6 +3,8 @@ const cors = require('cors');
 const { spawn, exec } = require('child_process');
 const path = require('path');
 const dotenv = require('dotenv');
+const axios = require('axios');
+const os = require('os');
 
 const app = express();
 app.use(cors());
@@ -57,6 +59,8 @@ app.post('/start-bot', (req, res) => {
         botWindowPid = parseInt(match[0]);
         console.log(`[✅ BOT STARTED] PID: ${botWindowPid}`);
         res.json({ message: `✅ Bot started`, pid: botWindowPid });
+
+        registerWithDashboard();
       } else {
         console.warn('[⚠️ BOT STARTED but PID not found]');
         res.json({ message: '⚠️ Bot started, but PID not found' });
@@ -89,3 +93,34 @@ const PORT = 4001;
 app.listen(PORT, () => {
   console.log(`🤖 Bot agent listening at http://localhost:${PORT}`);
 });
+
+async function registerWithDashboard() {
+  const botId = process.env.BOT_TAG || 'unknown-bot';
+  const port = PORT;
+  const ip = await getLocalIP();
+
+  try {
+    const res = await axios.post('http://52.71.253.188:3000/api/bots/register', {
+      botId,
+      ip,
+      port
+    });
+
+    console.log('[🔗 Bot Registered]', res.data.message);
+  } catch (err) {
+    console.error('[❌ Registration Failed]', err.message);
+  }
+}
+
+function getLocalIP() {
+  const interfaces = os.networkInterfaces();
+  for (let name in interfaces) {
+    for (let iface of interfaces[name]) {
+      if (iface.family === 'IPv4' && !iface.internal) {
+        return iface.address;
+      }
+    }
+  }
+  return '127.0.0.1';
+}
+
