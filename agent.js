@@ -58,7 +58,7 @@ app.post('/start-bot', (req, res) => {
 
         await registerWithDashboard();
         await updateStatusOnDashboard('running', 'Bot started from agent');
-        
+
       } else {
         console.warn('[⚠️ BOT STARTED but PID not found]');
         res.json({ message: '⚠️ Bot started, but PID not found' });
@@ -114,7 +114,7 @@ async function registerWithDashboard() {
 // 🔁 Update status (on start/stop)
 async function updateStatusOnDashboard(status, message) {
   try {
-    const res = await axios.post('http://52.71.253.188:3000/api/bots/update-status', {
+    const res = await axios.post('http://52.71.253.188:3000/api/bots/update-health', {
       botId: BOT_ID,
       status,
       message,
