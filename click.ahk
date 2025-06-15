@@ -20,7 +20,6 @@ clickY := Round(windowHeight * 0.38)
 MouseMove, clickX, clickY, 20
 Sleep, 600
 
-
 ;Click
 
 ; 👤 Simulate random human movement away
