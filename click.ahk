@@ -19,9 +19,11 @@ clickY := Round(windowHeight * 0.38)
 ; 🖱 Move to the checkbox and click
 MouseMove, clickX, clickY, 20
 Sleep, 600
-Click
+
+
+;Click
 
 ; 👤 Simulate random human movement away
-Random, randX, 200, ScreenWidth
-Random, randY, 200, ScreenHeight
-MouseMove, randX, randY, 15
+;Random, randX, 200, ScreenWidth
+;Random, randY, 200, ScreenHeight
+;MouseMove, randX, randY, 15
