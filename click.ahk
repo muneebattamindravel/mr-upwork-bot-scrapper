@@ -13,7 +13,7 @@ windowWidth := ScreenWidth / 2
 windowHeight := ScreenHeight
 
 ; Cloudflare checkbox estimated at 36% width, 38% height
-clickX := Round(windowWidth * 0.25)
+clickX := Round(windowWidth * 0.27)
 clickY := Round(windowHeight * 0.37)
 
 ; 🖱 Move to the checkbox and click
