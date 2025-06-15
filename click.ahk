@@ -12,9 +12,9 @@ SysGet, ScreenHeight, 79
 windowWidth := ScreenWidth / 2
 windowHeight := ScreenHeight
 
-; Cloudflare checkbox estimated at 37.7% width, 38.5% height
-clickX := Round(windowWidth * 0.377)
-clickY := Round(windowHeight * 0.385)
+; Cloudflare checkbox estimated at 36% width, 38% height
+clickX := Round(windowWidth * 0.36)
+clickY := Round(windowHeight * 0.38)
 
 ; 🖱 Move to the checkbox and click
 MouseMove, clickX, clickY, 20
