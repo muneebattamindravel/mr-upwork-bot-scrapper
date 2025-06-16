@@ -1,4 +1,5 @@
 const { app, session, screen } = require('electron');
+require('dotenv').config();
 const { createBrowserWindow } = require('./modules/browser');
 const { solveCloudflareIfPresent } = require('./modules/cloudflareSolver');
 const { scrapeJobFeed } = require('./modules/feedScraper');

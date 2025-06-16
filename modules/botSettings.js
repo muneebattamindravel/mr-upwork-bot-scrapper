@@ -5,14 +5,15 @@ let lastFetched = 0;
 const CACHE_DURATION_MS = 30 * 1000;
 
 async function getBotSettings(botId) {
-  const now = Date.now();
-
-  if (cachedSettings && (now - lastFetched < CACHE_DURATION_MS)) {
-    return cachedSettings;
-  }
-
   try {
+    const now = Date.now();
+
+    if (cachedSettings && (now - lastFetched < CACHE_DURATION_MS)) {
+      return cachedSettings;
+    }
+
     console.log(`fetching settings from`, `http://${process.env.SERVER_URL}/api/bot-settings/${botId}`);
+    
     const response = await axios.get(`http://${process.env.SERVER_URL}/api/bot-settings/${botId}`);
     if (response.data && response.data.success) {
       cachedSettings = response.data.settings;
