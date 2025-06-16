@@ -10,9 +10,6 @@ const { isLoginPage, shouldVisitJob, postJobToBackend } = require('./modules/uti
 const { getBotSettings } = require('./modules/botSettings');
 
 const botId = process.env.BOT_ID || 'bot-001';
-const serverURL = process.env.SERVER_URL;
-console.log(`bot id `, botId);
-console.log(`server url `, serverURL);
 
 let win;
 let settings;
@@ -22,8 +19,6 @@ let currentMessage = '';
 let currentJobUrl = '';
 
 app.whenReady().then(async () => {
-
-  console.log(`server URL in main ${process.env.SERVER_URL}`)
 
   settings = await getBotSettings(botId);
 
