@@ -22,17 +22,17 @@ app.whenReady().then(async () => {
 
   settings = await getBotSettings(botId);
 
-  // setInterval(() => {
-  //   sendHeartbeat({
-  //     status: currentStatus,
-  //     message: currentMessage,
-  //     jobUrl: currentJobUrl
-  //   });
-  // }, settings.heartbeatInterval);
+  setInterval(() => {
+    sendHeartbeat({
+      status: currentStatus,
+      message: currentMessage,
+      jobUrl: currentJobUrl
+    });
+  }, settings.heartbeatInterval);
 
-  // win = await createBrowserWindow(session, screen);
+  win = await createBrowserWindow(session, screen);
   
-  // console.log('[🧠 Bot Ready]');
+  console.log('[🧠 Bot Ready]');
   // await startCycle();
 });
 

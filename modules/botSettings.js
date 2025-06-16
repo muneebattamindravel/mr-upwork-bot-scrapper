@@ -18,7 +18,6 @@ async function getBotSettings(botId) {
       cachedSettings = response.data.data;
       lastFetched = now;
 
-      console.log(`✅ [Bot Settings] Loaded:`, cachedSettings);
       return cachedSettings;
     } else {
       console.warn('[⚠️ Bot Settings] Response malformed or not successful');
