@@ -20,11 +20,7 @@ app.whenReady().then(async () => {
   settings = await getBotSettings(botId);
 
   setInterval(() => {
-    sendHeartbeat({
-      status: 'booting',
-      message: '',
-      jobUrl: ''
-    });
+    sendHeartbeat('','','');
   }, settings.heartbeatInterval);
 
   win = await createBrowserWindow(session, screen);
