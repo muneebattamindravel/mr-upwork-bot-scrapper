@@ -33,7 +33,7 @@ app.whenReady().then(async () => {
   win = await createBrowserWindow(session, screen);
   
   console.log('[🧠 Bot Ready]');
-  // await startCycle();
+  await startCycle();
 });
 
 async function startCycle() {
