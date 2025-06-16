@@ -1,4 +1,4 @@
-const { wait, runAhkClick } = require('./utils');
+const { wait } = require('./utils');
 const { sendHeartbeat } = require('./heartbeat');
 const { getBotSettings } = require('./botSettings');
 
@@ -32,6 +32,18 @@ async function solveCloudflareIfPresent(win, botId) {
     console.log('[Cloudflare] Passed.');
     await sendHeartbeat({ status: 'cloudflare_passed', message: 'Cloudflare Passed' });
   }
+}
+
+function runAhkClick() {
+  return new Promise((resolve, reject) => {
+    exec('click.ahk', (error) => {
+      if (error) {
+        console.error('[AHK] Error:', error.message);
+        return reject(error);
+      }
+      resolve();
+    });
+  });
 }
 
 module.exports = { solveCloudflareIfPresent };
