@@ -19,6 +19,8 @@ let currentJobUrl = '';
 
 app.whenReady().then(async () => {
 
+  console.log(`server URL in main ${process.env.SERVER_URL}`)
+
   settings = await getBotSettings(botId);
 
   setInterval(() => {
