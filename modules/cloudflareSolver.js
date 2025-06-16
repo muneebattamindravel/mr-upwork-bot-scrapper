@@ -1,6 +1,7 @@
 const { wait } = require('./utils');
 const { sendHeartbeat } = require('./heartbeat');
 const { getBotSettings } = require('./botSettings');
+const { exec } = require('child_process');
 
 async function solveCloudflareIfPresent(win, botId) {
   console.log('[Cloudflare] Checking...');
