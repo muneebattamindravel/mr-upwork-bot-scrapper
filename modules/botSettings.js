@@ -13,17 +13,18 @@ async function getBotSettings(botId) {
     }
     
     const response = await axios.get(`http://${process.env.SERVER_URL}/api/bot-settings/${botId}`);
+    console.log(`response.data`, response.data)
 
-    if (response.success && response.data) {
-      cachedSettings = JSON.parse(response.data);
-      lastFetched = now;
+    // if (response.success && response.data) {
+    //   cachedSettings = JSON.parse(response.data);
+    //   lastFetched = now;
 
-      console.log(`return settings`, cachedSettings);
-      return cachedSettings;
-    } else {
-      console.warn('[⚠️ Bot Settings] Response malformed or not successful');
-      return cachedSettings || {};
-    }
+    //   console.log(`return settings`, cachedSettings);
+    //   return cachedSettings;
+    // } else {
+    //   console.warn('[⚠️ Bot Settings] Response malformed or not successful');
+    //   return cachedSettings || {};
+    // }
   } catch (err) {
     console.error('[❌ Bot Settings Fetch Failed]', err.message);
     return cachedSettings || {};
