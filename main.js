@@ -10,6 +10,7 @@ const { isLoginPage, shouldVisitJob, postJobToBackend } = require('./modules/uti
 const { getBotSettings } = require('./modules/botSettings');
 
 const botId = process.env.BOT_ID || 'bot-001';
+console.log(`bot id `, botId);
 
 let win;
 let settings;
