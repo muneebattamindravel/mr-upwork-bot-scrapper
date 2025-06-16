@@ -11,14 +11,14 @@ async function getBotSettings(botId) {
     if (cachedSettings && (now - lastFetched < CACHE_DURATION_MS)) {
       return cachedSettings;
     }
-    
+
     const response = await axios.get(`http://${process.env.SERVER_URL}/api/bot-settings/${botId}`);
 
-    if (response.success && response.data) {
+    if (response.data?.success === true && response.data?.data) {
       cachedSettings = response.data.data;
       lastFetched = now;
 
-      console.log(`return settings`, cachedSettings);
+      console.log(`✅ [Bot Settings] Loaded:`, cachedSettings);
       return cachedSettings;
     } else {
       console.warn('[⚠️ Bot Settings] Response malformed or not successful');
