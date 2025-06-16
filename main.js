@@ -14,9 +14,6 @@ const botId = process.env.BOT_ID || 'bot-001';
 let win;
 let settings;
 let jobList = [];
-let currentStatus = 'booting';
-let currentMessage = '';
-let currentJobUrl = '';
 
 app.whenReady().then(async () => {
 
@@ -24,9 +21,9 @@ app.whenReady().then(async () => {
 
   setInterval(() => {
     sendHeartbeat({
-      status: currentStatus,
-      message: currentMessage,
-      jobUrl: currentJobUrl
+      status: 'booting',
+      message: '',
+      jobUrl: ''
     });
   }, settings.heartbeatInterval);
 

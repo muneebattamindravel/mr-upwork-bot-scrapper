@@ -6,8 +6,17 @@ const botId = process.env.BOT_ID || 'default-bot';
 
 let lastHeartbeatTime = 0;
 
+let currentStatus = 'booting';
+let currentMessage = '';
+let currentJobUrl = '';
+
 async function sendHeartbeat({ status, message = '', jobUrl = '' }) {
   try {
+
+    currentStatus = status;
+    currentMessage = message;
+    currentJobUrl = jobUrl;
+
     const settings = await getBotSettings(botId);
     const interval = settings.heartbeatInterval || 10000;
 
