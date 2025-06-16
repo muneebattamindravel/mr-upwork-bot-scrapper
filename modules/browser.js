@@ -12,25 +12,25 @@ async function createBrowserWindow(session, screen) {
   try {
     const cookies = JSON.parse(fileContent);
     console.log(`cookies found`)
+
+    for (const c of cookies) {
+      await ses.cookies.set({
+        url: 'https://www.upwork.com',
+        name: c.name,
+        value: c.value,
+        domain: c.domain,
+        path: c.path,
+        secure: c.secure,
+        httpOnly: c.httpOnly,
+        sameSite: c.sameSite || 'Lax',
+        expirationDate: c.expirationDate
+      });
+    }
+
+    console.log('[Debug] Cookies injected.');
   } catch (err) {
     console.error('❌ Error parsing cookies JSON:', err.message);
   }
-
-  for (const c of cookies) {
-    await ses.cookies.set({
-      url: 'https://www.upwork.com',
-      name: c.name,
-      value: c.value,
-      domain: c.domain,
-      path: c.path,
-      secure: c.secure,
-      httpOnly: c.httpOnly,
-      sameSite: c.sameSite || 'Lax',
-      expirationDate: c.expirationDate
-    });
-  }
-
-  console.log('[Debug] Cookies injected.');
 
   const { width, height } = screen.getPrimaryDisplay().workAreaSize;
 
