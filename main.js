@@ -12,6 +12,9 @@ const botId = process.env.BOT_ID || 'bot-001';
 let win;
 let settings;
 let jobList = [];
+let currentStatus = 'booting';
+let currentMessage = '';
+let currentJobUrl = '';
 
 app.whenReady().then(async () => {
 
