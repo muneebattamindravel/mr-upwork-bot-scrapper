@@ -4,7 +4,8 @@
   "description": "",
   "main": "main.js",
   "scripts": {
-    "start": "node agent.js"
+    "start": "node agent.js",
+    "test": "electron ."
   },
   "keywords": [],
   "author": "",
