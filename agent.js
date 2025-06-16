@@ -12,7 +12,7 @@ app.use(express.json());
 
 dotenv.config({ path: path.join(__dirname, '.env') });
 
-const BOT_TAG = process.env.BOT_TAG;
+const BOT_TAG = 'ec2-t2micro-scraper-bot';
 const BOT_ID = process.env.BOT_ID || 'unknown-bot';
 const BAT_PATH = path.join(__dirname, 'start-bot.bat');
 
@@ -121,7 +121,7 @@ async function registerWithDashboard() {
   const ip = await getPublicIP();
 
   try {
-    const res = await axios.post('http://52.71.253.188:3000/api/bots/register', {
+    const res = await axios.post(`http://${process.env.SERVER_URL}/api/bots/register`, {
       botId: BOT_ID,
       ip,
       port,
@@ -136,7 +136,7 @@ async function registerWithDashboard() {
 // 🔁 Update status (on start/stop)
 async function updateStatusOnDashboard(status, message) {
   try {
-    const res = await axios.post('http://52.71.253.188:3000/api/bots/update-health', {
+    const res = await axios.post(`http://${process.env.SERVER_URL}/api/bots/update-health`, {
       botId: BOT_ID,
       status,
       message,
