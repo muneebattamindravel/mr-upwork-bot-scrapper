@@ -8,7 +8,9 @@ async function createBrowserWindow(session, screen) {
   const cookiePath = path.join(__dirname, '../upwork_cookies.json');
   console.log(`cookies path`, cookiePath);
   const fileContent = fs.readFileSync(cookiePath, 'utf-8').replace(/^\uFEFF/, '');
+  console.log(`file content`, fileContent);
   const cookies = JSON.parse(fileContent);
+  console.log(`cookies`, cookies);
 
   for (const c of cookies) {
     await ses.cookies.set({
