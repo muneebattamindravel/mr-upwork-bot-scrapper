@@ -14,17 +14,22 @@ async function createBrowserWindow(session, screen) {
     console.log(`cookies found`)
 
     for (const c of cookies) {
-      await ses.cookies.set({
-        url: 'https://www.upwork.com',
-        name: c.name,
-        value: c.value,
-        domain: c.domain,
-        path: c.path,
-        secure: c.secure,
-        httpOnly: c.httpOnly,
-        sameSite: c.sameSite || 'Lax',
-        expirationDate: c.expirationDate
-      });
+      console.log(`Trying to set cookie: ${c.name}`);
+      try {
+        await ses.cookies.set({
+          url: 'https://www.upwork.com',
+          name: c.name,
+          value: c.value,
+          domain: c.domain,
+          path: c.path,
+          secure: c.secure,
+          httpOnly: c.httpOnly,
+          sameSite: c.sameSite || 'Lax',
+          expirationDate: c.expirationDate
+        });
+      } catch (err) {
+        console.error(`❌ Error setting cookie: ${c.name}`, err.message);
+      }
     }
 
     console.log('[Debug] Cookies injected.');
