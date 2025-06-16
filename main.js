@@ -6,7 +6,7 @@ const { solveCloudflareIfPresent } = require('./modules/cloudflareSolver');
 const { scrapeJobFeed } = require('./modules/feedScraper');
 const { scrapeJobDetail } = require('./modules/detailScraper');
 const { sendHeartbeat } = require('./modules/heartbeat');
-const { isLoginPage, shouldVisitJob, postJobToBackend } = require('./modules/utils');
+const { isLoginPage, shouldVisitJob, postJobToBackend, wait } = require('./modules/utils');
 const { getBotSettings } = require('./modules/botSettings');
 
 const botId = process.env.BOT_ID || 'bot-001';

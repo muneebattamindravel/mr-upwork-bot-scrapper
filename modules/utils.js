@@ -49,9 +49,14 @@ const cleanDollarValue = (val) => {
   return isNaN(num) ? 0 : num * multiplier;
 };
 
+function wait(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 module.exports = {
   shouldVisitJob,
   postJobToBackend,
   isLoginPage,
-  cleanDollarValue
+  cleanDollarValue,
+  wait
 };
