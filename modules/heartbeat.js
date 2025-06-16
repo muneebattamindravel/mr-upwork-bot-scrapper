@@ -4,26 +4,8 @@ const { getBotSettings } = require('./botSettings');
 const backendUrl = `http://${process.env.SERVER_URL}`;
 const botId = process.env.BOT_ID || 'default-bot';
 
-let lastHeartbeatTime = 0;
-
-let currentStatus = 'booting';
-let currentMessage = '';
-let currentJobUrl = '';
-
 async function sendHeartbeat({ status, message = '', jobUrl = '' }) {
   try {
-
-    currentStatus = status;
-    currentMessage = message;
-    currentJobUrl = jobUrl;
-
-    const settings = await getBotSettings(botId);
-    const interval = settings.heartbeatInterval || 10000;
-
-    const now = Date.now();
-    if (now - lastHeartbeatTime < interval) return;
-
-    lastHeartbeatTime = now;
 
     await axios.post(`${backendUrl}/api/bots/heartbeat`, {
       botId,
