@@ -1,5 +1,6 @@
+require('dotenv').config({ path: path.resolve(__dirname, '.env') });
+
 const { app, session, screen } = require('electron');
-require('dotenv').config();
 const { createBrowserWindow } = require('./modules/browser');
 const { solveCloudflareIfPresent } = require('./modules/cloudflareSolver');
 const { scrapeJobFeed } = require('./modules/feedScraper');
