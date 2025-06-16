@@ -11,10 +11,8 @@ async function createBrowserWindow(session, screen) {
 
   try {
     const cookies = JSON.parse(fileContent);
-    console.log(`cookies found`)
 
     for (const c of cookies) {
-      console.log(`Trying to set cookie: ${c.name}`);
       try {
         await ses.cookies.set({
           url: 'https://www.upwork.com',

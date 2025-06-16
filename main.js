@@ -1,4 +1,4 @@
-const { app } = require('electron');
+const { app, session, screen } = require('electron');
 const { createBrowserWindow } = require('./modules/browser');
 const { solveCloudflareIfPresent } = require('./modules/cloudflareSolver');
 const { scrapeJobFeed } = require('./modules/feedScraper');
@@ -14,8 +14,19 @@ let settings;
 let jobList = [];
 
 app.whenReady().then(async () => {
-  win = await createBrowserWindow(botId);
+
   settings = await getBotSettings(botId);
+
+  setInterval(() => {
+    sendHeartbeat({
+      status: currentStatus,
+      message: currentMessage,
+      jobUrl: currentJobUrl
+    });
+  }, settings.heartbeatInterval);
+
+  win = await createBrowserWindow(session, screen);
+  
   console.log('[🧠 Bot Ready]');
   await startCycle();
 });
