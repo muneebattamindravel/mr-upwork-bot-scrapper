@@ -13,11 +13,12 @@ async function getBotSettings(botId) {
     }
     
     const response = await axios.get(`http://${process.env.SERVER_URL}/api/bot-settings/${botId}`);
+    console.log(`response of settings`, response);
+
     if (response.data && response.success) {
       cachedSettings = response.data;
       lastFetched = now;
-
-      console.log(`return settings`, cachedSettings)
+      
       return cachedSettings;
     } else {
       console.warn('[⚠️ Bot Settings] Response malformed or not successful');
