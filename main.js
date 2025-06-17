@@ -5,7 +5,7 @@ const { createBrowserWindow } = require('./modules/browser');
 const { solveCloudflareIfPresent } = require('./modules/cloudflareSolver');
 const { scrapeJobFeed } = require('./modules/feedScraper');
 const { scrapeJobDetail } = require('./modules/detailScraper');
-const { sendHeartbeat } = require('./modules/heartbeat');
+const { sendHeartbeat, startHeartbeatInterval } = require('./modules/heartbeat');
 const { isLoginPage, shouldVisitJob, postJobToBackend, wait } = require('./modules/utils');
 const { getBotSettings } = require('./modules/botSettings');
 
@@ -16,15 +16,9 @@ let settings;
 let jobList = [];
 
 app.whenReady().then(async () => {
-
   settings = await getBotSettings(botId);
-
-  setInterval(() => {
-    sendHeartbeat('','','');
-  }, settings.heartbeatInterval);
-
+  startHeartbeatInterval(settings.heartbeatInterval);
   win = await createBrowserWindow(session, screen);
-  
   console.log('[🧠 Bot Ready]');
   await startCycle();
 });

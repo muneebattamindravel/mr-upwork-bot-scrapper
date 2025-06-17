@@ -9,25 +9,33 @@ let currentJobUrl = '';
 
 async function sendHeartbeat({ status = '', message = '', jobUrl = '' }) {
   try {
+    currentStatus = status || currentStatus;
+    currentMessage = message || currentMessage;
+    currentJobUrl = jobUrl || currentJobUrl;
 
-    currentStatus = status;
-    currentMessage = message;
-    currentJobUrl = jobUrl;
+    const cleanURL = currentJobUrl?.split('?')[0] || '';
 
     await axios.post(`${backendUrl}/api/bots/heartbeat`, {
       botId,
-      status: status === '' ? currentStatus : status,
-      message: message === '' ? currentMessage : message,
-      jobUrl: jobUrl === '' ? currentJobUrl : jobUrl,
-      timestamp: new Date().toISOString(),
+      status: currentStatus,
+      message: currentMessage,
+      jobUrl: cleanURL,
+      timestamp: new Date().toISOString()
     });
 
-    console.log(`[📡 Heartbeat] ${status} — ${message}`);
+    console.log(`[📡 Heartbeat] ${currentStatus} — ${currentMessage}`);
   } catch (err) {
     console.warn('[⚠️ Heartbeat Failed]', err.message);
   }
 }
 
+function startHeartbeatInterval(interval = 10000) {
+  setInterval(() => {
+    sendHeartbeat({}); // Use last known status/message/jobUrl
+  }, interval);
+}
+
 module.exports = {
   sendHeartbeat,
+  startHeartbeatInterval
 };
