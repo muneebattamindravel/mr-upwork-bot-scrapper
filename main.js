@@ -104,7 +104,7 @@ async function startCycle() {
 
         await sendHeartbeat({ status: 'scraping_job', message: `Scraping job ${i + 1}`, jobUrl: job.url.split('?')[0] });
 
-        const details = await scrapeJobDetail(i, job.url.split('?')[0]);
+        const details = await scrapeJobDetail(win, i, job.url.split('?')[0]);
         jobList[i] = { ...job, ...details };
 
         log(`[✅ Scraped Job ${i + 1}]`, jobList[i]);

@@ -4,10 +4,10 @@ const { sendHeartbeat } = require('./heartbeat');
 const { cleanDollarValue } = require('./utils');
 const { log } = require('./utils');
 
-async function scrapeJobDetail(index, jobUrl) {
+async function scrapeJobDetail(win, index, jobUrl) {
   try {
 
-    return dumpAndExtractJobDetails(index, jobUrl);
+    return dumpAndExtractJobDetails(win, index, jobUrl);
 
   } catch (err) {
     console.error(`[❌ scrapeJobDetail] Failed for index ${index} – ${err.message}`);
@@ -20,7 +20,7 @@ async function scrapeJobDetail(index, jobUrl) {
   }
 }
 
-async function dumpAndExtractJobDetails(index, originalUrl) {
+async function dumpAndExtractJobDetails(win, index, originalUrl) {
   const html = await win.webContents.executeJavaScript('document.documentElement.outerHTML');
   const filePath = path.join(__dirname, 'html-dumps', `job_detail_dump_${index}.html`);
   fs.writeFileSync(filePath, html, 'utf-8');
