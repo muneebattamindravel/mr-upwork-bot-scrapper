@@ -5,6 +5,7 @@ const path = require('path');
 const dotenv = require('dotenv');
 const axios = require('axios');
 const https = require('https');
+const { log } = require('./modules/utils');
 
 const app = express();
 app.use(cors());
