@@ -66,6 +66,7 @@ async function startCycle() {
 
         const shouldVisit = await shouldVisitJob(job.url.split('?')[0]);
         if (!shouldVisit) {
+          console.log(`*** already exists, job url = `, job.url.split('?')[0])
           log(`[Skip] Job ${i + 1} already exists, url = `, job.url.split('?')[0]);
           await wait(1000);
           continue;
