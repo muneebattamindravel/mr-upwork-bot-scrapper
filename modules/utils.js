@@ -23,7 +23,7 @@ function log(...args) {
   console.log(`🪵`, ...args);
 
   try {
-    fs.appendFileSync(LOG_FILE, message + '\n', 'utf8');
+    // fs.appendFileSync(LOG_FILE, message + '\n', 'utf8');
   } catch (err) {
     console.error('❌ Failed to write log to file:', err.message);
   }
@@ -38,7 +38,7 @@ async function shouldVisitJob(url) {
     const shouldVisit = response.data?.data?.shouldVisit === true;
 
     log(`🟡 shouldVisitJob(${url}) → ${shouldVisit}`);
-    
+
     return shouldVisit;
   } catch (err) {
     console.error(`[shouldVisitJob] Error checking job existence: ${err.message}`);

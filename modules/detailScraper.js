@@ -24,12 +24,7 @@ async function dumpAndExtractJobDetails(win, index, originalUrl) {
   const html = await win.webContents.executeJavaScript('document.documentElement.outerHTML');
   const filePath = path.join(__dirname, '..', 'html-dumps', `job_detail_dump_${index}.html`);
 
-  log(`***** dupmping to url`, filePath);
-
   fs.writeFileSync(filePath, html, 'utf-8');
-  log(`[Debug] Dumped HTML to ${filePath}`);
-
-  log(`***** reading from url`, filePath);
 
   const buffer = fs.readFileSync(filePath);
   const rawHtml = new TextDecoder('utf-8').decode(buffer);
