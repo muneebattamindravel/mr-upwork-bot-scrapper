@@ -22,7 +22,7 @@ async function scrapeJobDetail(win, index, jobUrl) {
 
 async function dumpAndExtractJobDetails(win, index, originalUrl) {
   const html = await win.webContents.executeJavaScript('document.documentElement.outerHTML');
-  const filePath = path.join(__dirname, 'html-dumps', `job_detail_dump_${index}.html`);
+  const filePath = path.join(__dirname, '..', 'html-dumps', `job_detail_dump_${index}.html`);
 
   log(`***** dupmping to url`, filePath);
 
