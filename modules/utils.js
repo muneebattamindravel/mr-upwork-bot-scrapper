@@ -12,7 +12,7 @@ function log(...args) {
   const timestamp = new Date().toISOString();
   const message = `[${timestamp}] ${args.join(' ')}`;
 
-  log(`🪵`, ...args);
+  console.log(`🪵`, ...args);
 
   try {
     fs.appendFileSync(LOG_FILE, message + '\n', 'utf8');
