@@ -64,21 +64,21 @@ async function startCycle() {
       for (let i = 0; i < jobList.length; i++) {
         const job = jobList[i];
 
-        const shouldVisit = await shouldVisitJob(job.url);
+        const shouldVisit = await shouldVisitJob(job.url.split('?')[0]);
         if (!shouldVisit) {
-          log(`[Skip] Job ${i + 1} already exists, url = `, job.url);
+          log(`[Skip] Job ${i + 1} already exists, url = `, job.url.split('?')[0]);
           await wait(1000);
           continue;
         }
 
-        await sendHeartbeat({ status: 'visiting_job_detail', message: job.title, jobUrl: job.url });
+        await sendHeartbeat({ status: 'visiting_job_detail', message: job.title, jobUrl: job.url.split('?')[0] });
         const safeUrl = job.url.split('?')[0];
 
         try {
           await win.loadURL(safeUrl);
         } catch (err) {
-          console.error('[❌ Load Error]', job.url, err.message);
-          await sendHeartbeat({ status: 'job_load_failed', message: 'Failed to load job URL', jobUrl: job.url });
+          console.error('[❌ Load Error]', job.url.split('?')[0], err.message);
+          await sendHeartbeat({ status: 'job_load_failed', message: 'Failed to load job URL', jobUrl: job.url.split('?')[0] });
           continue;
         }
 
@@ -100,14 +100,14 @@ async function startCycle() {
           await wait(settings.htmlWaitAfterShortLoad || 1500);
         }
 
-        await sendHeartbeat({ status: 'scraping_job', message: `Scraping job ${i + 1}`, jobUrl: job.url });
+        await sendHeartbeat({ status: 'scraping_job', message: `Scraping job ${i + 1}`, jobUrl: job.url.split('?')[0] });
 
-        const details = await scrapeJobDetail(i, job.url);
+        const details = await scrapeJobDetail(i, job.url.split('?')[0]);
         jobList[i] = { ...job, ...details };
 
         log(`[✅ Scraped Job ${i + 1}]`, jobList[i]);
 
-        await sendHeartbeat({ status: 'saving_to_db', message: `Posting job ${i + 1} to backend`, jobUrl: job.url });
+        await sendHeartbeat({ status: 'saving_to_db', message: `Posting job ${i + 1} to backend`, jobUrl: job.url.split('?')[0] });
         await postJobToBackend(jobList[i]);
 
         const minDelay = settings.jobScrapeDelayMin || 1000;
