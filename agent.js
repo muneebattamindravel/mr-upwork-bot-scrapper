@@ -80,7 +80,6 @@ app.post('/start-bot', async (req, res) => {
         log(`[✅ BOT STARTED] PID: ${botWindowPid}`);
         res.json({ message: `✅ Bot started`, pid: botWindowPid });
 
-        await registerWithDashboard();
         await updateStatusOnDashboard('healthy', 'Bot started from agent');
       } else {
         log('[⚠️ BOT STARTED but PID not found]');
@@ -114,6 +113,7 @@ app.post('/stop-bot', (req, res) => {
 const PORT = 4001;
 app.listen(PORT, () => {
   log(`🤖 Bot agent listening at http://localhost:${PORT}`);
+  registerWithDashboard();
 });
 
 // 🔁 Register bot with dashboard (on start only)
