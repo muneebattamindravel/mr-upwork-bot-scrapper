@@ -23,7 +23,7 @@ if (!BOT_TAG) {
   process.exit(1);
 }
 
-console.log(`🤖 Loaded BOT_TAG: ${BOT_TAG}`);
+log(`🤖 Loaded BOT_TAG: ${BOT_TAG}`);
 
 // ✅ Check if a PID is still alive
 function isPidAlive(pid) {
@@ -62,7 +62,7 @@ app.post('/start-bot', async (req, res) => {
     shell: true,
   });
 
-  console.log('[🟡 BOT LAUNCHING...]');
+  log('[🟡 BOT LAUNCHING...]');
 
   setTimeout(() => {
     const wmicCommand = `wmic process where "CommandLine like '%--bot-tag=${BOT_TAG}%'" get ProcessId`;
@@ -76,13 +76,13 @@ app.post('/start-bot', async (req, res) => {
       const match = stdout.match(/(\d+)/g);
       if (match && match.length > 0) {
         botWindowPid = parseInt(match[0]);
-        console.log(`[✅ BOT STARTED] PID: ${botWindowPid}`);
+        log(`[✅ BOT STARTED] PID: ${botWindowPid}`);
         res.json({ message: `✅ Bot started`, pid: botWindowPid });
 
         await registerWithDashboard();
         await updateStatusOnDashboard('healthy', 'Bot started from agent');
       } else {
-        console.warn('[⚠️ BOT STARTED but PID not found]');
+        log('[⚠️ BOT STARTED but PID not found]');
         res.json({ message: '⚠️ Bot started, but PID not found' });
       }
     });
@@ -94,7 +94,7 @@ app.post('/stop-bot', (req, res) => {
     ? `taskkill /PID ${botWindowPid} /T /F`
     : `taskkill /FI "WINDOWTITLE eq UPWORK_SCRAPER_BOT_WINDOW" /T /F`;
 
-  console.log('[🛑 STOP COMMAND]', killCommand);
+  log('[🛑 STOP COMMAND]', killCommand);
 
   exec(killCommand, async (err, stdout, stderr) => {
     if (err) {
@@ -102,7 +102,7 @@ app.post('/stop-bot', (req, res) => {
       return res.status(500).json({ message: 'Failed to stop bot', error: stderr || err.message });
     }
 
-    console.log(`[🛑 BOT STOPPED]`);
+    log(`[🛑 BOT STOPPED]`);
     botWindowPid = null;
     res.json({ message: '✅ Bot stopped successfully' });
 
@@ -112,7 +112,7 @@ app.post('/stop-bot', (req, res) => {
 
 const PORT = 4001;
 app.listen(PORT, () => {
-  console.log(`🤖 Bot agent listening at http://localhost:${PORT}`);
+  log(`🤖 Bot agent listening at http://localhost:${PORT}`);
 });
 
 // 🔁 Register bot with dashboard (on start only)
@@ -127,7 +127,7 @@ async function registerWithDashboard() {
       port,
     });
 
-    console.log('[🔗 Bot Registered]', res.data.message);
+    log('[🔗 Bot Registered]', res.data.message);
   } catch (err) {
     console.error('[❌ Registration Failed]', err.message);
   }
@@ -142,7 +142,7 @@ async function updateStatusOnDashboard(status, message) {
       message,
     });
 
-    console.log(`[📣 Status Updated] ${status}`);
+    log(`[📣 Status Updated] ${status}`);
   } catch (err) {
     console.error('[❌ Update Status Failed]', err.message);
   }

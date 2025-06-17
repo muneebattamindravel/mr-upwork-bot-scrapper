@@ -1,4 +1,5 @@
 const axios = require('axios');
+const { log } = require('./utils');
 
 let cachedSettings = null;
 let lastFetched = 0;
@@ -20,7 +21,7 @@ async function getBotSettings(botId) {
 
       return cachedSettings;
     } else {
-      console.warn('[⚠️ Bot Settings] Response malformed or not successful');
+      log('[⚠️ Bot Settings] Response malformed or not successful');
       return cachedSettings || {};
     }
   } catch (err) {

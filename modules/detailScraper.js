@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const { sendHeartbeat } = require('./heartbeat');
 const { cleanDollarValue } = require('./utils');
+const { log } = require('./utils');
 
 async function scrapeJobDetail(index, jobUrl) {
   try {
@@ -23,7 +24,7 @@ async function dumpAndExtractJobDetails(index, originalUrl) {
   const html = await win.webContents.executeJavaScript('document.documentElement.outerHTML');
   const filePath = path.join(__dirname, 'html-dumps', `job_detail_dump_${index}.html`);
   fs.writeFileSync(filePath, html, 'utf-8');
-  console.log(`[Debug] Dumped HTML to ${filePath}`);
+  log(`[Debug] Dumped HTML to ${filePath}`);
 
   const buffer = fs.readFileSync(filePath);
   const rawHtml = new TextDecoder('utf-8').decode(buffer);

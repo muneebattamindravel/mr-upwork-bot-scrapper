@@ -1,4 +1,5 @@
 const axios = require('axios');
+const { log } = require('./utils');
 
 const backendUrl = `http://${process.env.SERVER_URL}`;
 const botId = process.env.BOT_ID || 'default-bot';
@@ -23,9 +24,9 @@ async function sendHeartbeat({ status = '', message = '', jobUrl = '' }) {
       timestamp: new Date().toISOString()
     });
 
-    console.log(`[📡 Heartbeat] ${currentStatus} — ${currentMessage}`);
+    log(`[📡 Heartbeat] ${currentStatus} — ${currentMessage}`);
   } catch (err) {
-    console.warn('[⚠️ Heartbeat Failed]', err.message);
+    log('[⚠️ Heartbeat Failed]', err.message);
   }
 }
 

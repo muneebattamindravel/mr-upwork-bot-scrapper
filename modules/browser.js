@@ -1,6 +1,7 @@
 const { BrowserWindow } = require('electron');
 const fs = require('fs');
 const path = require('path');
+const { log } = require('./utils');
 
 async function createBrowserWindow(session, screen) {
 
@@ -30,7 +31,7 @@ async function createBrowserWindow(session, screen) {
       }
     }
 
-    console.log('[Debug] Cookies injected.');
+    log('[Debug] Cookies injected.');
   } catch (err) {
     console.error('❌ Error parsing cookies JSON:', err.message);
   }

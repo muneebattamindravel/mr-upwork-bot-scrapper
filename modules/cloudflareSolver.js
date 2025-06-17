@@ -2,9 +2,10 @@ const { wait } = require('./utils');
 const { sendHeartbeat } = require('./heartbeat');
 const { getBotSettings } = require('./botSettings');
 const { exec } = require('child_process');
+const { log } = require('./utils');
 
 async function solveCloudflareIfPresent(win, botId) {
-  console.log('[Cloudflare] Checking...');
+  log('[Cloudflare] Checking...');
 
   const isCloudflare = await win.webContents.executeJavaScript(`
     (() => {
@@ -17,7 +18,7 @@ async function solveCloudflareIfPresent(win, botId) {
 
   if (isCloudflare) {
     await sendHeartbeat({ status: 'cloudflare_detected', message: 'Cloudflare detected, trying to solve' });
-    console.log('[Cloudflare] Detected. Solving...');
+    log('[Cloudflare] Detected. Solving...');
 
     const botSettings = await getBotSettings(botId);
     const waitBeforeClick = botSettings.cloudflareWaitBeforeClick || 3000;
@@ -30,7 +31,7 @@ async function solveCloudflareIfPresent(win, botId) {
 
     return await solveCloudflareIfPresent(win, botId);
   } else {
-    console.log('[Cloudflare] Passed.');
+    log('[Cloudflare] Passed.');
     await sendHeartbeat({ status: 'cloudflare_passed', message: 'Cloudflare Passed' });
   }
 }

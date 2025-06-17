@@ -1,4 +1,25 @@
 const axios = require('axios');
+const fs = require('fs');
+const path = require('path');
+const LOG_DIR = path.join(__dirname, '..', 'logs');
+const LOG_FILE = path.join(LOG_DIR, 'bot.log');
+
+if (!fs.existsSync(LOG_DIR)) {
+  fs.mkdirSync(LOG_DIR);
+}
+
+function log(...args) {
+  const timestamp = new Date().toISOString();
+  const message = `[${timestamp}] ${args.join(' ')}`;
+
+  log(`🪵`, ...args);
+
+  try {
+    fs.appendFileSync(LOG_FILE, message + '\n', 'utf8');
+  } catch (err) {
+    console.error('❌ Failed to write log to file:', err.message);
+  }
+}
 
 async function shouldVisitJob(url) {
   try {
@@ -18,7 +39,7 @@ async function postJobToBackend(jobData) {
     const response = await axios.post(`http://${process.env.SERVER_URL}/api/jobs/ingest`, [jobData]);
 
     const insertedCount = response.data?.inserted || 1;
-    console.log(`✅ Job posted: ${insertedCount} job(s)`);
+    log(`✅ Job posted: ${insertedCount} job(s)`);
   } catch (err) {
     console.error('❌ Failed to post job:', err.message);
   }
@@ -58,5 +79,6 @@ module.exports = {
   postJobToBackend,
   isLoginPage,
   cleanDollarValue,
-  wait
+  wait,
+  log
 };

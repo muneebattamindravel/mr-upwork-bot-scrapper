@@ -6,7 +6,7 @@ const { solveCloudflareIfPresent } = require('./modules/cloudflareSolver');
 const { scrapeJobFeed } = require('./modules/feedScraper');
 const { scrapeJobDetail } = require('./modules/detailScraper');
 const { sendHeartbeat, startHeartbeatInterval } = require('./modules/heartbeat');
-const { isLoginPage, shouldVisitJob, postJobToBackend, wait } = require('./modules/utils');
+const { isLoginPage, shouldVisitJob, postJobToBackend, wait, log } = require('./modules/utils');
 const { getBotSettings } = require('./modules/botSettings');
 
 const botId = process.env.BOT_ID || 'bot-001';
@@ -19,7 +19,7 @@ app.whenReady().then(async () => {
   settings = await getBotSettings(botId);
   startHeartbeatInterval(settings.heartbeatInterval);
   win = await createBrowserWindow(session, screen);
-  console.log('[🧠 Bot Ready]');
+  log('[🧠 Bot Ready]');
   await startCycle();
 });
 
@@ -45,28 +45,28 @@ async function startCycle() {
       }
 
       const url = baseUrl.toString();
-      console.log(`🔍 Using Upwork URL: ${url}`);
+      log(`🔍 Using Upwork URL: ${url}`);
       await win.loadURL(url);
 
       await wait(settings.feedWait || 5000);
       await solveCloudflareIfPresent(win, botId);
 
       if (await isLoginPage(win)) {
-        console.warn('[Login Detected] Bot redirected to login!');
+        log('[Login Detected] Bot redirected to login!');
         await sendHeartbeat({ status: 'stuck', message: '⚠️ Bot stuck at login. Refresh cookies.', jobUrl: '' });
         return;
       }
 
       await sendHeartbeat({ status: 'scraping_feed', message: 'Extracting job links' });
       jobList = await scrapeJobFeed(win, botId);
-      console.log(`🟡 Found ${jobList.length} jobs`);
+      log(`🟡 Found ${jobList.length} jobs`);
 
       for (let i = 0; i < jobList.length; i++) {
         const job = jobList[i];
 
         const shouldVisit = await shouldVisitJob(job.url);
         if (!shouldVisit) {
-          console.log(`[Skip] Job ${i + 1} already exists, skipping`);
+          log(`[Skip] Job ${i + 1} already exists, url = `, job.url);
           await wait(1000);
           continue;
         }
@@ -96,7 +96,7 @@ async function startCycle() {
         const htmlThreshold = settings.htmlLengthThreshold || 10000;
 
         if (htmlLengthCheck < htmlThreshold) {
-          console.log(`[Warn] Job ${i + 1} page may not be fully loaded. Waiting extra...`);
+          log(`[Warn] Job ${i + 1} page may not be fully loaded. Waiting extra...`);
           await wait(settings.htmlWaitAfterShortLoad || 1500);
         }
 
@@ -105,7 +105,7 @@ async function startCycle() {
         const details = await scrapeJobDetail(i, job.url);
         jobList[i] = { ...job, ...details };
 
-        console.log(`[✅ Scraped Job ${i + 1}]`, jobList[i]);
+        log(`[✅ Scraped Job ${i + 1}]`, jobList[i]);
 
         await sendHeartbeat({ status: 'saving_to_db', message: `Posting job ${i + 1} to backend`, jobUrl: job.url });
         await postJobToBackend(jobList[i]);
@@ -114,7 +114,7 @@ async function startCycle() {
         const maxDelay = settings.jobScrapeDelayMax || 2000;
 
         const delayBetweenJobs = minDelay + Math.floor(Math.random() * (maxDelay - minDelay));
-        console.log(`[Delay] Waiting ${delayBetweenJobs}ms between jobs...`);
+        log(`[Delay] Waiting ${delayBetweenJobs}ms between jobs...`);
         await wait(delayBetweenJobs);
       }
 
@@ -124,7 +124,7 @@ async function startCycle() {
       const maxCycleDelay = settings.cycleDelayMax || 40000;
 
       const delay = minCycleDelay + Math.floor(Math.random() * (maxCycleDelay - minCycleDelay));
-      console.log(`[Cycle] Waiting ${delay / 1000}s before next cycle...`);
+      log(`[Cycle] Waiting ${delay / 1000}s before next cycle...`);
 
       await sendHeartbeat({ status: 'idle', message: `Sleeping for ${delay / 1000}s before next cycle` });
       await wait(delay);
