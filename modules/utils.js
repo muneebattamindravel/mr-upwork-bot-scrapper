@@ -4,10 +4,18 @@ const path = require('path');
 const LOG_DIR = path.join(__dirname, '..', 'logs');
 const LOG_FILE = path.join(LOG_DIR, 'bot.log');
 
+// Ensure log directory exists
 if (!fs.existsSync(LOG_DIR)) {
-  fs.mkdirSync(LOG_DIR);
+  fs.mkdirSync(LOG_DIR, { recursive: true });
 }
 
+// ❌ Delete old log file at startup
+if (fs.existsSync(LOG_FILE)) {
+  fs.unlinkSync(LOG_FILE);
+}
+
+// ✅ Create a fresh empty log file
+fs.writeFileSync(LOG_FILE, '', 'utf-8');
 function log(...args) {
   const timestamp = new Date().toISOString();
   const message = `[${timestamp}] ${args.join(' ')}`;
