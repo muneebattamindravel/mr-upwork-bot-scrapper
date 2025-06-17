@@ -35,13 +35,17 @@ async function shouldVisitJob(url) {
       url: url.split('?')[0]
     });
 
-    log(`response of should visit`, response.data);
-    return response.data?.shouldVisit === true;
+    const shouldVisit = response.data?.data?.shouldVisit === true;
+
+    log(`🟡 shouldVisitJob(${url}) → ${shouldVisit}`);
+    
+    return shouldVisit;
   } catch (err) {
     console.error(`[shouldVisitJob] Error checking job existence: ${err.message}`);
     return false;
   }
 }
+
 
 async function postJobToBackend(jobData) {
   try {
