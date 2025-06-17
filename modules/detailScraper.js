@@ -20,6 +20,14 @@ async function scrapeJobDetail(win, index, jobUrl) {
   }
 }
 
+function decodeHTMLEntities(text) {
+  return text.replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'");
+}
+
 async function dumpAndExtractJobDetails(win, index, originalUrl) {
   const html = await win.webContents.executeJavaScript('document.documentElement.outerHTML');
   const filePath = path.join(__dirname, '..', 'html-dumps', `job_detail_dump_${index}.html`);
