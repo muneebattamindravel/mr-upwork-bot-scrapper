@@ -34,6 +34,8 @@ async function shouldVisitJob(url) {
     const response = await axios.post(`http://${process.env.SERVER_URL}/api/jobs/shouldVisit`, {
       url: url.split('?')[0]
     });
+
+    log(`response of should visit`, response.data);
     return response.data?.shouldVisit === true;
   } catch (err) {
     console.error(`[shouldVisitJob] Error checking job existence: ${err.message}`);
