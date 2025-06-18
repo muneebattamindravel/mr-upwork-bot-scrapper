@@ -58,36 +58,47 @@ app.post('/start-bot', async (req, res) => {
     }
   }
 
-  spawn('cmd.exe', ['/c', 'start', '', 'cmd', '/k', BAT_PATH], {
-    detached: true,
-    shell: true,
-  });
-
-  log('[🟡 BOT LAUNCHING...]');
-
-  setTimeout(() => {
-    const wmicCommand = `wmic process where "CommandLine like '%--bot-tag=${BOT_TAG}%'" get ProcessId`;
-
-    exec(wmicCommand, async (err, stdout) => {
-      if (err) {
-        console.error('[❌ PID DETECTION FAILED]', err.message);
-        return res.status(500).json({ message: 'Failed to detect PID', error: err.message });
-      }
-
-      const match = stdout.match(/(\d+)/g);
-      if (match && match.length > 0) {
-        botWindowPid = parseInt(match[0]);
-        log(`[✅ BOT STARTED] PID: ${botWindowPid}`);
-        res.json({ message: `✅ Bot started`, pid: botWindowPid });
-
-        await updateStatusOnDashboard('healthy', 'Bot started from agent');
-      } else {
-        log('[⚠️ BOT STARTED but PID not found]');
-        res.json({ message: '⚠️ Bot started, but PID not found' });
-      }
+  try {
+    const subprocess = spawn('cmd.exe', ['/c', 'start', '"UPWORK_SCRAPER_BOT_WINDOW"', 'cmd', '/k', BAT_PATH], {
+      detached: true,
+      stdio: 'ignore',
+      shell: true,
     });
-  }, 2500);
+
+    subprocess.unref(); // Important: allows this process to run independently
+
+    log('[🟡 BOT LAUNCHING...]');
+
+    // Immediately respond to dashboard
+    res.json({ message: '⏳ Bot launching...' });
+
+    // Async PID detection (non-blocking)
+    setTimeout(() => {
+      const wmicCommand = `wmic process where "CommandLine like '%--bot-tag=${BOT_TAG}%'" get ProcessId`;
+
+      exec(wmicCommand, async (err, stdout) => {
+        if (err) {
+          console.error('[❌ PID DETECTION FAILED]', err.message);
+          return;
+        }
+
+        const match = stdout.match(/(\d+)/g);
+        if (match && match.length > 0) {
+          botWindowPid = parseInt(match[0]);
+          log(`[✅ BOT STARTED] PID: ${botWindowPid}`);
+          await updateStatusOnDashboard('healthy', 'Bot started from agent');
+        } else {
+          log('[⚠️ BOT STARTED but PID not found]');
+        }
+      });
+    }, 2500);
+
+  } catch (error) {
+    console.error('[❌ BOT START ERROR]', error.message);
+    return res.status(500).json({ message: 'Bot start failed', error: error.message });
+  }
 });
+
 
 app.post('/stop-bot', (req, res) => {
   const killCommand = botWindowPid
@@ -109,6 +120,7 @@ app.post('/stop-bot', (req, res) => {
     await updateStatusOnDashboard('offline', 'Bot stopped from agent');
   });
 });
+
 
 const PORT = 4001;
 app.listen(PORT, () => {
