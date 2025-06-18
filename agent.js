@@ -116,7 +116,7 @@ app.listen(PORT, () => {
   registerWithDashboard();
 });
 
-// 🔁 Register bot with dashboard (on start only)
+// 🔁 Register bot with dashboard (on start only);;
 async function registerWithDashboard() {
   const port = PORT;
   const ip = await getPublicIP();
