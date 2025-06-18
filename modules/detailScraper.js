@@ -226,8 +226,6 @@ async function dumpAndExtractJobDetails(win, index, originalUrl) {
     return { minRange: 0, maxRange: 0 };
   };
 
-
-
   const { title, mainCategory } = extractTitleAndCategory();
   const { minRange, maxRange } = extractBudgetRange();
 
