@@ -204,7 +204,7 @@ async function dumpAndExtractJobDetails(win, index, originalUrl) {
     return '';
   };
 
-  const extractBudgetRange = () => {
+  function extractBudgetRange(rawHtml) {
     const ranges = [];
     const budgetKeyword = 'BudgetAmount';
     let index = 0;
@@ -238,7 +238,7 @@ async function dumpAndExtractJobDetails(win, index, originalUrl) {
   }
 
   const { title, mainCategory } = extractTitleAndCategory();
-  const { minRange, maxRange } = extractBudgetRange();
+  const { minRange, maxRange } = extractBudgetRange(rawHtml);
 
   return {
     title,
