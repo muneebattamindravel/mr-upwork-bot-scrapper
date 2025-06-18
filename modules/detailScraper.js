@@ -204,7 +204,7 @@ async function dumpAndExtractJobDetails(win, index, originalUrl) {
     return '';
   };
 
-  function extractBudgetRange(rawHtml) {
+  function extractBudgetRange() {
     const ranges = [];
     const budgetKeyword = 'BudgetAmount';
     let index = 0;
