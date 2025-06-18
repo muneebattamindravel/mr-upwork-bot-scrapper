@@ -29,11 +29,11 @@ async function startCycle() {
       settings = await getBotSettings(botId);
       await sendHeartbeat({ status: 'navigating_feed', message: 'Opening Upwork job feed' });
 
-      const maxJobs = settings.maxJobsPerCycle || 50;
-      const query = settings.queryString?.trim() || '';
+      const maxJobs = settings.perPage || 50;
+      const query = settings.searchQuery?.trim() || '';
 
-      log(`settings max jobs`, settings.maxJobsPerCycle);
-      log(`settings query`, settings.queryString);
+      log(`settings max jobs`, settings.perPage);
+      log(`settings query`, settings.searchQuery);
 
       const baseUrl = new URL('https://www.upwork.com/nx/search/jobs/');
       baseUrl.searchParams.set('page', '1');
