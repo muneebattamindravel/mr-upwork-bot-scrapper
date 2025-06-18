@@ -40,6 +40,8 @@ async function startCycle() {
       baseUrl.searchParams.set('per_page', maxJobs.toString());
       baseUrl.searchParams.set('sort', 'recency');
 
+      return;
+
       if (query) {
         baseUrl.searchParams.set('q', query);
       }
@@ -47,7 +49,6 @@ async function startCycle() {
       const url = baseUrl.toString();
       log(`🔍 Using Upwork URL: ${url}`);
 
-      break;
       await win.loadURL(url);
 
       await wait(settings.feedWait || 5000);
