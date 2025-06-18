@@ -32,15 +32,10 @@ async function startCycle() {
       const maxJobs = settings.perPage || 50;
       const query = settings.searchQuery?.trim() || '';
 
-      log('settings max jobs', maxJobs);
-      log('settings query', query);
-
       const baseUrl = new URL('https://www.upwork.com/nx/search/jobs/');
       baseUrl.searchParams.set('page', '1');
       baseUrl.searchParams.set('per_page', maxJobs.toString());
       baseUrl.searchParams.set('sort', 'recency');
-
-      return;
 
       if (query) {
         baseUrl.searchParams.set('q', query);
@@ -100,7 +95,7 @@ async function startCycle() {
 
         if (htmlLengthCheck < htmlThreshold) {
           log(`[Warn] Job ${i + 1} page may not be fully loaded. Waiting extra...`);
-          await wait(settings.htmlWaitAfterShortLoad || 1500);
+          await wait(settings.waitIfHtmlThresholdFailded || 1500);
         }
 
         await sendHeartbeat({ status: 'scraping_job', message: `Scraping job ${i + 1}`, jobUrl: job.url.split('?')[0] });
@@ -113,8 +108,8 @@ async function startCycle() {
         await sendHeartbeat({ status: 'saving_to_db', message: `Posting job ${i + 1} to backend`, jobUrl: job.url.split('?')[0] });
         await postJobToBackend(jobList[i]);
 
-        const minDelay = settings.jobScrapeDelayMin || 1000;
-        const maxDelay = settings.jobScrapeDelayMax || 2000;
+        const minDelay = settings.delayBetweenJobsScrapingMin || 1000;
+        const maxDelay = settings.delayBetweenJobsScrapingMax || 2000;
 
         const delayBetweenJobs = minDelay + Math.floor(Math.random() * (maxDelay - minDelay));
         log(`[Delay] Waiting ${delayBetweenJobs}ms between jobs...`);
