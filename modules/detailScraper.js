@@ -37,8 +37,6 @@ async function dumpAndExtractJobDetails(win, index, originalUrl) {
   const buffer = fs.readFileSync(filePath);
   const rawHtml = new TextDecoder('utf-8').decode(buffer);
 
-  const rawHtmltest = fs.readFileSync(filePath, 'utf-8');
-
   const extractTitleAndCategory = () => {
     const match = rawHtml.match(/<title>(.*?)<\/title>/i);
     if (!match) return { title: '', mainCategory: '' };

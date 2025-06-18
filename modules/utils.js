@@ -65,7 +65,7 @@ async function isLoginPage(win) {
 }
 
 const cleanDollarValue = (val) => {
-  if (!val || typeof val !== 'string') return 0;
+  if (val === null || val === undefined) return 0;
 
   const cleaned = val.toString().trim().replace(/[$,]/g, '').toUpperCase();
 
