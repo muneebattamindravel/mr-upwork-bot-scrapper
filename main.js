@@ -32,8 +32,8 @@ async function startCycle() {
       const maxJobs = settings.perPage || 50;
       const query = settings.searchQuery?.trim() || '';
 
-      log(`settings max jobs`, settings.perPage);
-      log(`settings query`, settings.searchQuery);
+      log('settings max jobs', maxJobs);
+      log('settings query', query);
 
       const baseUrl = new URL('https://www.upwork.com/nx/search/jobs/');
       baseUrl.searchParams.set('page', '1');
@@ -41,10 +41,7 @@ async function startCycle() {
       baseUrl.searchParams.set('sort', 'recency');
 
       if (query) {
-        const queryParts = new URLSearchParams(query);
-        for (const [key, value] of queryParts.entries()) {
-          baseUrl.searchParams.set(key, value);
-        }
+        baseUrl.searchParams.set('q', query);
       }
 
       const url = baseUrl.toString();
