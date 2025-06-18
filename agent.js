@@ -40,66 +40,32 @@ function isPidAlive(pid) {
 }
 
 app.get('/status', async (req, res) => {
-  if (botWindowPid) {
-    const alive = await isPidAlive(botWindowPid);
-    if (!alive) botWindowPid = null;
-  }
-
-  res.json({ status: botWindowPid ? 'running' : 'stopped', pid: botWindowPid });
-});
-
-app.post('/start-bot', async (req, res) => {
-  if (botWindowPid) {
-    const alive = await isPidAlive(botWindowPid);
-    if (alive) {
-      return res.json({ message: 'Bot already running', pid: botWindowPid });
-    } else {
-      botWindowPid = null;
-    }
-  }
-
   try {
-    spawn('cmd.exe', ['/c', 'start', '"UPWORK_SCRAPER_BOT_WINDOW"', 'cmd', '/k', BAT_PATH], {
-      detached: true,
-      stdio: 'ignore',
-      shell: true,
-    }).unref();
+    if (botWindowPid) {
+      const alive = await isPidAlive(botWindowPid);
+      if (!alive) botWindowPid = null;
+    }
 
-    log('[🟡 BOT LAUNCHING...]');
-
-    // Wait a bit for the bot to fully launch and set up the Electron window
-    setTimeout(() => {
-      const wmicCommand = `wmic process where "CommandLine like '%--bot-tag=${BOT_TAG}%'" get ProcessId`;
-
-      exec(wmicCommand, async (err, stdout) => {
-        if (err) {
-          console.error('[❌ PID DETECTION FAILED]', err.message);
-          return res.status(500).json({ message: 'Failed to detect PID', error: err.message });
-        }
-
-        const match = stdout.match(/(\d+)/g);
-        if (match && match.length > 0) {
-          botWindowPid = parseInt(match[0]);
-          log(`[✅ BOT STARTED] PID: ${botWindowPid}`);
-
-          await updateStatusOnDashboard('healthy', 'Bot started from agent');
-
-          return res.json({ message: '✅ Bot started', pid: botWindowPid });
-        } else {
-          log('[⚠️ BOT STARTED but PID not found]');
-          return res.json({ message: '⚠️ Bot started, but PID not found' });
-        }
-      });
-    }, 2500);
-
-  } catch (error) {
-    console.error('[❌ BOT START ERROR]', error.message);
-    return res.status(500).json({ message: 'Bot start failed', error: error.message });
+    return res.status(200).json({
+      success: true,
+      message: 'Bot status fetched',
+      data: {
+        status: botWindowPid ? 'running' : 'stopped',
+        pid: botWindowPid || null
+      }
+    });
+  } catch (err) {
+    console.error('[Agent /status Error]', err.message);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to fetch bot status',
+      data: null
+    });
   }
 });
 
 
-
+// ✅ Stop Bot
 app.post('/stop-bot', (req, res) => {
   const killCommand = botWindowPid
     ? `taskkill /PID ${botWindowPid} /T /F`
@@ -110,16 +76,26 @@ app.post('/stop-bot', (req, res) => {
   exec(killCommand, async (err, stdout, stderr) => {
     if (err) {
       console.error('[❌ STOP ERROR]', stderr || err.message);
-      return res.status(500).json({ message: 'Failed to stop bot', error: stderr || err.message });
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to stop bot',
+        data: { error: stderr || err.message }
+      });
     }
 
     log(`[🛑 BOT STOPPED]`);
     botWindowPid = null;
-    res.json({ message: '✅ Bot stopped successfully' });
 
     await updateStatusOnDashboard('offline', 'Bot stopped from agent');
+
+    return res.status(200).json({
+      success: true,
+      message: '✅ Bot stopped successfully',
+      data: null
+    });
   });
 });
+
 
 
 const PORT = 4001;
