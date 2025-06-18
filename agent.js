@@ -59,36 +59,35 @@ app.post('/start-bot', async (req, res) => {
   }
 
   try {
-    const subprocess = spawn('cmd.exe', ['/c', 'start', '"UPWORK_SCRAPER_BOT_WINDOW"', 'cmd', '/k', BAT_PATH], {
+    spawn('cmd.exe', ['/c', 'start', '"UPWORK_SCRAPER_BOT_WINDOW"', 'cmd', '/k', BAT_PATH], {
       detached: true,
       stdio: 'ignore',
       shell: true,
-    });
-
-    subprocess.unref(); // Important: allows this process to run independently
+    }).unref();
 
     log('[🟡 BOT LAUNCHING...]');
 
-    // Immediately respond to dashboard
-    res.json({ message: '⏳ Bot launching...' });
-
-    // Async PID detection (non-blocking)
+    // Wait a bit for the bot to fully launch and set up the Electron window
     setTimeout(() => {
       const wmicCommand = `wmic process where "CommandLine like '%--bot-tag=${BOT_TAG}%'" get ProcessId`;
 
       exec(wmicCommand, async (err, stdout) => {
         if (err) {
           console.error('[❌ PID DETECTION FAILED]', err.message);
-          return;
+          return res.status(500).json({ message: 'Failed to detect PID', error: err.message });
         }
 
         const match = stdout.match(/(\d+)/g);
         if (match && match.length > 0) {
           botWindowPid = parseInt(match[0]);
           log(`[✅ BOT STARTED] PID: ${botWindowPid}`);
+
           await updateStatusOnDashboard('healthy', 'Bot started from agent');
+
+          return res.json({ message: '✅ Bot started', pid: botWindowPid });
         } else {
           log('[⚠️ BOT STARTED but PID not found]');
+          return res.json({ message: '⚠️ Bot started, but PID not found' });
         }
       });
     }, 2500);
@@ -98,6 +97,7 @@ app.post('/start-bot', async (req, res) => {
     return res.status(500).json({ message: 'Bot start failed', error: error.message });
   }
 });
+
 
 
 app.post('/stop-bot', (req, res) => {
