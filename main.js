@@ -32,6 +32,9 @@ async function startCycle() {
       const maxJobs = settings.maxJobsPerCycle || 50;
       const query = settings.queryString?.trim() || '';
 
+      log(`settings max jobs`, settings.maxJobsPerCycle);
+      log(`settings query`, settings.queryString);
+
       const baseUrl = new URL('https://www.upwork.com/nx/search/jobs/');
       baseUrl.searchParams.set('page', '1');
       baseUrl.searchParams.set('per_page', maxJobs.toString());
