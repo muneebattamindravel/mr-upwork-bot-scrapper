@@ -205,7 +205,11 @@ async function dumpAndExtractJobDetails(win, index, originalUrl) {
   };
 
   const extractBudgetRange = () => {
-    const matches = [...rawHtml.matchAll(/<div[^>]+data-test="BudgetAmount"[^>]*>[\s\S]*?<strong[^>]*>\s*\$([\d,]+\.\d{2})\s*<\/strong>/gi)];
+    const matches = [
+      ...rawHtml.matchAll(
+        /<div[^>]+data-test="BudgetAmount"[^>]*>[\s\S]*?\$([\d,]+\.\d{2})/gi
+      ),
+    ];
 
     if (matches.length === 1) {
       const amount = parseFloat(matches[0][1].replace(/,/g, ''));
@@ -221,6 +225,7 @@ async function dumpAndExtractJobDetails(win, index, originalUrl) {
 
     return { minRange: 0, maxRange: 0 };
   };
+
 
   const { title, mainCategory } = extractTitleAndCategory();
   const { minRange, maxRange } = extractBudgetRange();
