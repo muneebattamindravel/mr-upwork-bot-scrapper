@@ -238,7 +238,7 @@ async function dumpAndExtractJobDetails(win, index, originalUrl) {
   }
 
   const { title, mainCategory } = extractTitleAndCategory();
-  const { minRange, maxRange } = extractBudgetRange(rawHtmltest);
+  const { minRange, maxRange } = extractBudgetRange();
 
   console.log(`*** minRange`, minRange)
   console.log(`*** maxRange`, maxRange)
