@@ -46,6 +46,8 @@ async function startCycle() {
 
       const url = baseUrl.toString();
       log(`🔍 Using Upwork URL: ${url}`);
+
+      break;
       await win.loadURL(url);
 
       await wait(settings.feedWait || 5000);
