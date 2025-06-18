@@ -205,26 +205,37 @@ async function dumpAndExtractJobDetails(win, index, originalUrl) {
   };
 
   const extractBudgetRange = () => {
-    const matches = [
-      ...rawHtml.matchAll(
-        /<div[^>]+data-test="BudgetAmount"[^>]*>[\s\S]*?\$([\d,]+\.\d{2})/gi
-      )
-    ];
+    const ranges = [];
+    const budgetKeyword = 'BudgetAmount';
+    let index = 0;
 
-    if (matches.length === 1) {
-      const amount = parseFloat(matches[0][1].replace(/,/g, ''));
-      return { minRange: amount, maxRange: amount };
+    while ((index = rawHtml.indexOf(budgetKeyword, index)) !== -1) {
+      let i = index;
+      while (i < rawHtml.length && rawHtml[i] !== '$') i++;
+      if (i >= rawHtml.length) break;
+      i++; // move past $
+
+      let valueChars = [];
+      while (i < rawHtml.length && rawHtml[i] !== '<') {
+        valueChars.push(rawHtml[i]);
+        i++;
+      }
+
+      const valueStr = valueChars.join('').trim().replace(/,/g, '');
+      const amount = parseFloat(valueStr);
+      if (!isNaN(amount)) ranges.push(amount);
+
+      index += budgetKeyword.length;
     }
 
-    if (matches.length >= 2) {
-      return {
-        minRange: parseFloat(matches[0][1].replace(/,/g, '')),
-        maxRange: parseFloat(matches[1][1].replace(/,/g, ''))
-      };
+    if (ranges.length === 1) {
+      return { minRange: ranges[0], maxRange: ranges[0] };
+    } else if (ranges.length >= 2) {
+      return { minRange: ranges[0], maxRange: ranges[1] };
+    } else {
+      return { minRange: 0, maxRange: 0 };
     }
-
-    return { minRange: 0, maxRange: 0 };
-  };
+  }
 
   const { title, mainCategory } = extractTitleAndCategory();
   const { minRange, maxRange } = extractBudgetRange();
