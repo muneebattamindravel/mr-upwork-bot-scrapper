@@ -184,21 +184,6 @@ async function registerWithDashboard() {
   }
 }
 
-// // 🔁 Update status (on start/stop)
-// async function updateStatusOnDashboard(status, message) {
-//   try {
-//     const res = await axios.post(`http://${process.env.SERVER_URL}/api/bots/update-health`, {
-//       botId: BOT_ID,
-//       status,
-//       message,
-//     });
-
-//     log(`[📣 Status Updated] ${status}`);
-//   } catch (err) {
-//     console.error('[❌ Update Status Failed]', err.message);
-//   }
-// }
-
 // 🌐 Get public IP
 function getPublicIP() {
   return new Promise((resolve) => {
