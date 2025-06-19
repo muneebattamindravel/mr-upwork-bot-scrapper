@@ -19,12 +19,11 @@ const BAT_PATH = path.join(__dirname, 'start-bot.bat');
 
 let botWindowPid = null;
 
-if (!BOT_TAG) {
-  console.error('❌ BOT_TAG not found in .env. Exiting...');
-  process.exit(1);
-}
-
-log(`🤖 Loaded BOT_TAG: ${BOT_TAG}`);
+const PORT = 4001;
+app.listen(PORT, () => {
+  log(`🤖 Bot agent listening at http://localhost:${PORT}`);
+  registerWithDashboard();
+});
 
 // ✅ Check if a PID is still alive
 function isPidAlive(pid) {
@@ -46,11 +45,14 @@ app.get('/status', async (req, res) => {
       if (!alive) botWindowPid = null;
     }
 
+    let currentStatus = botWindowPid ? 'running' : 'stopped';
+    console.log(`Returning status `, currentStatus);
+
     return res.status(200).json({
       success: true,
       message: 'Bot status fetched',
       data: {
-        status: botWindowPid ? 'running' : 'stopped',
+        status: currentStatus,
         pid: botWindowPid || null
       }
     });
@@ -94,14 +96,6 @@ app.post('/stop-bot', (req, res) => {
       data: null
     });
   });
-});
-
-
-
-const PORT = 4001;
-app.listen(PORT, () => {
-  log(`🤖 Bot agent listening at http://localhost:${PORT}`);
-  registerWithDashboard();
 });
 
 // 🔁 Register bot with dashboard (on start only);;
