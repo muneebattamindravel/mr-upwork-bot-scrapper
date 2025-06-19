@@ -53,8 +53,6 @@ async function postJobToBackend(jobData) {
     jobData.url = jobData.url.split('?')[0];
     jobData.botId = process.env.BOT_ID;
 
-    log('sending bot id: ', jobData.botId);
-
     const response = await axios.post(`http://${process.env.SERVER_URL}/api/jobs/ingest`, [jobData]);
 
     const insertedCount = response.data?.inserted || 1;
