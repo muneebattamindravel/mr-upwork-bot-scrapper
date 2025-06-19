@@ -46,7 +46,7 @@ app.get('/status', async (req, res) => {
     }
 
     let currentStatus = botWindowPid ? 'running' : 'stopped';
-    console.log(`Returning status `, currentStatus);
+    log(`Bot Status : `, currentStatus);
 
     return res.status(200).json({
       success: true,
@@ -77,7 +77,7 @@ app.post('/stop-bot', (req, res) => {
 
   exec(killCommand, async (err, stdout, stderr) => {
     if (err) {
-      console.error('[❌ STOP ERROR]', stderr || err.message);
+      log('[❌ STOP ERROR]', stderr || err.message);
       return res.status(500).json({
         success: false,
         message: 'Failed to stop bot',
