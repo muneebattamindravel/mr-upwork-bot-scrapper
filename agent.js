@@ -108,7 +108,7 @@ app.post('/start-bot', async (req, res) => {
         botWindowPid = parseInt(match[0]);
         log(`[✅ BOT STARTED] PID: ${botWindowPid}`);
 
-        await updateStatusOnDashboard('healthy', 'Bot started from agent');
+        //await updateStatusOnDashboard('healthy', 'Bot started from agent');
 
         return res.json({
           success: true,
@@ -156,7 +156,7 @@ app.post('/stop-bot', (req, res) => {
     log(`[🛑 BOT STOPPED]`);
     botWindowPid = null;
 
-    await updateStatusOnDashboard('offline', 'Bot stopped from agent');
+    //('offline', 'Bot stopped from agent');
 
     return res.status(200).json({
       success: true,
@@ -184,20 +184,20 @@ async function registerWithDashboard() {
   }
 }
 
-// 🔁 Update status (on start/stop)
-async function updateStatusOnDashboard(status, message) {
-  try {
-    const res = await axios.post(`http://${process.env.SERVER_URL}/api/bots/update-health`, {
-      botId: BOT_ID,
-      status,
-      message,
-    });
+// // 🔁 Update status (on start/stop)
+// async function updateStatusOnDashboard(status, message) {
+//   try {
+//     const res = await axios.post(`http://${process.env.SERVER_URL}/api/bots/update-health`, {
+//       botId: BOT_ID,
+//       status,
+//       message,
+//     });
 
-    log(`[📣 Status Updated] ${status}`);
-  } catch (err) {
-    console.error('[❌ Update Status Failed]', err.message);
-  }
-}
+//     log(`[📣 Status Updated] ${status}`);
+//   } catch (err) {
+//     console.error('[❌ Update Status Failed]', err.message);
+//   }
+// }
 
 // 🌐 Get public IP
 function getPublicIP() {
