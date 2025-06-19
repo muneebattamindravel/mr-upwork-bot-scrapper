@@ -32,7 +32,7 @@ async function sendHeartbeat({ status = '', message = '', jobUrl = '' }) {
 
 function startHeartbeatInterval(interval = 10000) {
   setInterval(() => {
-    sendHeartbeat({}); // Use last known status/message/jobUrl
+    sendHeartbeat({});
   }, interval);
 }
 
