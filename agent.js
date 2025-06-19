@@ -66,6 +66,74 @@ app.get('/status', async (req, res) => {
   }
 });
 
+app.post('/start-bot', async (req, res) => {
+  if (botWindowPid) {
+    const alive = await isPidAlive(botWindowPid);
+    if (alive) {
+      return res.json({
+        success: true,
+        message: 'Bot already running',
+        data: { pid: botWindowPid }
+      });
+    } else {
+      botWindowPid = null;
+    }
+  }
+
+  try {
+    spawn('cmd.exe', ['/c', 'start', '"UPWORK_SCRAPER_BOT_WINDOW"', 'cmd', '/k', BAT_PATH], {
+      detached: true,
+      stdio: 'ignore',
+      shell: true,
+    }).unref();
+
+    log('[🟡 BOT LAUNCHING...]');
+
+    // ✅ Delay without exiting early
+    await new Promise(resolve => setTimeout(resolve, 2500));
+
+    const wmicCommand = `wmic process where "CommandLine like '%--bot-tag=${BOT_TAG}%'" get ProcessId`;
+    exec(wmicCommand, async (err, stdout) => {
+      if (err) {
+        console.error('[❌ PID DETECTION FAILED]', err.message);
+        return res.status(500).json({
+          success: false,
+          message: 'Failed to detect PID',
+          error: err.message
+        });
+      }
+
+      const match = stdout.match(/(\d+)/g);
+      if (match && match.length > 0) {
+        botWindowPid = parseInt(match[0]);
+        log(`[✅ BOT STARTED] PID: ${botWindowPid}`);
+
+        await updateStatusOnDashboard('healthy', 'Bot started from agent');
+
+        return res.json({
+          success: true,
+          message: '✅ Bot started',
+          data: { pid: botWindowPid }
+        });
+      } else {
+        log('[⚠️ BOT STARTED but PID not found]');
+        return res.json({
+          success: false,
+          message: '⚠️ Bot started, but PID not found',
+          data: {}
+        });
+      }
+    });
+
+  } catch (error) {
+    console.error('[❌ BOT START ERROR]', error.message);
+    return res.status(500).json({
+      success: false,
+      message: 'Bot start failed',
+      error: error.message
+    });
+  }
+});
 
 // ✅ Stop Bot
 app.post('/stop-bot', (req, res) => {
