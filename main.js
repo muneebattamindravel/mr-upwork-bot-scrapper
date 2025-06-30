@@ -52,7 +52,7 @@ async function startCycle() {
 
       if (await isLoginPage(win)) {
         log('[Login Detected] Bot redirected to login!');
-        await sendHeartbeat({ status: 'stuck', message: '⚠️ Bot stuck at login. Refresh cookies.', jobUrl: '' });
+        await sendHeartbeat({ status: 'login_detected', message: '⚠️ Bot stuck at login. Refresh cookies.', jobUrl: '' });
         return;
       }
 
