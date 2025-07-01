@@ -61,7 +61,14 @@ async function startCycle() {
       log(`🟡 Found ${jobList.length} jobs`);
 
       for (let i = 0; i < jobList.length; i++) {
+
         const job = jobList[i];
+
+        // ✅ Skip any URL that is the feed page itself
+        if (!job.url || job.url.includes('/search/jobs/')) {
+          log(`[Skip] Invalid or feed URL detected, skipping: ${job.url}`);
+          continue;
+        }
 
         const shouldVisit = await shouldVisitJob(job.url.split('?')[0]);
         if (!shouldVisit) {
