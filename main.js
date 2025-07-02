@@ -35,6 +35,9 @@ async function startCycle() {
       await sendHeartbeat({ status: 'navigating_feed', message: 'Opening Upwork job feed' });
 
       const maxJobs = settings.perPage || 50;
+
+      log(`Jobs to scrape `, settings.perPage);
+
       const query = settings.searchQuery?.trim() || '';
 
       const baseUrl = new URL('https://www.upwork.com/nx/search/jobs/');
