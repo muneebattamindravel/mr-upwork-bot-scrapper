@@ -27,6 +27,10 @@ app.whenReady().then(async () => {
 async function startCycle() {
   while (true) {
     try {
+
+      jobList = [];
+      jobList.length = 0;
+
       settings = await getBotSettings(botId);
       await sendHeartbeat({ status: 'navigating_feed', message: 'Opening Upwork job feed' });
 
@@ -134,7 +138,7 @@ async function startCycle() {
 
       await sendHeartbeat({ status: 'idle', message: `Sleeping for ${delay / 1000}s before next cycle` });
       await wait(delay);
-      jobList = [];
+
 
     } catch (err) {
       console.error('[❌ Cycle Error]', err.message);
