@@ -19,8 +19,10 @@ app.whenReady().then(async () => {
   settings = await getBotSettings(botId);
 
   startHeartbeatInterval(settings.heartbeatInterval);
-  // win = await createBrowserWindow(session, screen);
-  win = await createBrowserWindowNoLogin(session, screen);
+  
+  win = await createBrowserWindow(session, screen);
+  // win = await createBrowserWindowNoLogin(session, screen);
+
   log('[🧠 Bot Ready]');
   await startCycle();
 });
