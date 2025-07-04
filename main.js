@@ -1,7 +1,7 @@
 require('dotenv').config();
 
 const { app, session, screen } = require('electron');
-const { createBrowserWindow } = require('./modules/browser');
+const { createBrowserWindow, createBrowserWindowNoLogin } = require('./modules/browser');
 const { solveCloudflareIfPresent } = require('./modules/cloudflareSolver');
 const { scrapeJobFeed } = require('./modules/feedScraper');
 const { scrapeJobDetail } = require('./modules/detailScraper');
@@ -19,7 +19,8 @@ app.whenReady().then(async () => {
   settings = await getBotSettings(botId);
 
   startHeartbeatInterval(settings.heartbeatInterval);
-  win = await createBrowserWindow(session, screen);
+  // win = await createBrowserWindow(session, screen);
+  win = await createBrowserWindowNoLogin(session, screen);
   log('[🧠 Bot Ready]');
   await startCycle();
 });
