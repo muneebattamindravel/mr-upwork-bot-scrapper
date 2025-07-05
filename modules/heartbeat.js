@@ -1,7 +1,6 @@
 const axios = require('axios');
 const { log } = require('./utils');
 
-const backendUrl = `http://${process.env.SERVER_IP}`;
 const botId = process.env.BOT_ID || 'default-bot';
 
 let currentStatus = 'booting';
@@ -16,10 +15,10 @@ async function sendHeartbeat({ status = '', message = '', jobUrl = '' }) {
 
     const cleanURL = currentJobUrl?.split('?')[0] || '';
 
-    let finalURL = `${backendUrl}/api/bots/heartbeat`;
+    let finalURL = `${process.env.BRAIN_BASE_URL}/bots/heartbeat`;
     console.log(`FINAL URL : `, finalURL);
-    
-    await axios.post(`${backendUrl}/api/bots/heartbeat`, {
+
+    await axios.post(`${process.env.BRAIN_BASE_URL}/bots/heartbeat`, {
       botId,
       status: currentStatus,
       message: currentMessage,
