@@ -1,7 +1,7 @@
 const axios = require('axios');
 const { log } = require('./utils');
 
-const backendUrl = `http://${process.env.SERVER_URL}`;
+const backendUrl = `http://${process.env.SERVER_IP}`;
 const botId = process.env.BOT_ID || 'default-bot';
 
 let currentStatus = 'booting';

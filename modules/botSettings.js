@@ -13,7 +13,7 @@ async function getBotSettings(botId) {
       return cachedSettings;
     }
 
-    const response = await axios.get(`http://${process.env.SERVER_URL}/api/bot-settings/${botId}`);
+    const response = await axios.get(`http://${process.env.SERVER_IP}/api/bot-settings/${botId}`);
 
     if (response.data?.success === true && response.data?.data) {
       cachedSettings = response.data.data;

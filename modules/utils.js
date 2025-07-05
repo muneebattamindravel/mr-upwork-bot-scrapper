@@ -31,7 +31,7 @@ function log(...args) {
 
 async function shouldVisitJob(url) {
   try {
-    const response = await axios.post(`http://${process.env.SERVER_URL}/api/jobs/shouldVisit`, {
+    const response = await axios.post(`http://${process.env.SERVER_IP}/api/jobs/shouldVisit`, {
       url: url.split('?')[0]
     });
 
@@ -53,7 +53,7 @@ async function postJobToBackend(jobData) {
     jobData.url = jobData.url.split('?')[0];
     jobData.botId = process.env.BOT_ID;
 
-    const response = await axios.post(`http://${process.env.SERVER_URL}/api/jobs/ingest`, [jobData]);
+    const response = await axios.post(`http://${process.env.SERVER_IP}/api/jobs/ingest`, [jobData]);
 
     const insertedCount = response.data?.inserted || 1;
     log(`✅ Job posted: ${insertedCount} job(s)`);
