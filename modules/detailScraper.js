@@ -77,25 +77,56 @@ async function dumpAndExtractJobDetails(win, index, originalUrl) {
     return match ? match[1].trim() : '';
   };
 
-  const extractPostedAgoText = () => {
-    const match = rawHtml.match(/>(\d+\s+\w+)\s+ago</i);
-    return match ? match[1].trim() : '';
+  const extractPostedAgoText = (html) => {
+    // Match 'X unit ago' first
+    let match = html.match(/(\d+)\s+(second|minute|hour|day|week|month|year)s?\s+ago/i);
+    if (match) return match[0].trim();
+
+    // Match 'Posted yesterday'
+    match = html.match(/Posted\s+yesterday/i);
+    if (match) return 'yesterday';
+
+    // Match 'Posted today'
+    match = html.match(/Posted\s+today/i);
+    if (match) return 'today';
+
+    return null;
   };
 
-  const calculatePostedDate = () => {
-    const text = extractPostedAgoText().toLowerCase();
-    const parts = text.split(' ');
-    if (parts.length !== 2) return '';
+
+  const calculatePostedDate = (html) => {
+    const text = extractPostedAgoText(html);
+    if (!text) return null;
+
+    const now = new Date();
+
+    if (text === 'yesterday') {
+      now.setDate(now.getDate() - 1);
+      return now;
+    }
+
+    if (text === 'today') {
+      return now;
+    }
+
+    // Fallback for 'X unit ago'
+    const parts = text.toLowerCase().split(' ');
+    if (parts.length < 2) return now;
+
     const value = parseInt(parts[0]);
     const unit = parts[1];
-    const now = new Date();
+
     if (unit.startsWith('second')) now.setSeconds(now.getSeconds() - value);
     else if (unit.startsWith('minute')) now.setMinutes(now.getMinutes() - value);
     else if (unit.startsWith('hour')) now.setHours(now.getHours() - value);
     else if (unit.startsWith('day')) now.setDate(now.getDate() - value);
     else if (unit.startsWith('week')) now.setDate(now.getDate() - value * 7);
-    return now.toISOString();
+    else if (unit.startsWith('month')) now.setMonth(now.getMonth() - value);
+    else if (unit.startsWith('year')) now.setFullYear(now.getFullYear() - value);
+
+    return now;
   };
+
 
   const extractRequiredConnects = () => {
     // Case 1: Match number before "required connects"
