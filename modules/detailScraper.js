@@ -85,7 +85,7 @@ async function dumpAndExtractJobDetails(win, index, originalUrl) {
     const extractPostedAgoText = (html) => {
       // Match 'X unit ago' first
       let match = rawHtml.match(/(\d+)\s+(second|minute|hour|day|week|month|year)s?\s+ago/i);
-      if (match) return match[0].trim();
+      if (match) return match[0].trim();;
 
       // Match 'Posted yesterday'
       match = rawHtml.match(/Posted\s+yesterday/i);
