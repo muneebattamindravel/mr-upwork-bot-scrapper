@@ -16,7 +16,7 @@ async function getBotSettings(botId) {
     const response = await axios.get(`${process.env.BRAIN_BASE_URL}/bots/settings/${botId}`);
 
     if (response.data?.success === true && response.data?.data) {
-      cachedSettings = response.data.data;
+      cachedSettings = response.data.data.settings;
       lastFetched = now;
 
       return cachedSettings;
