@@ -84,23 +84,23 @@ async function dumpAndExtractJobDetails(win, index, originalUrl) {
 
     const extractPostedAgoText = (html) => {
       // Match 'X unit ago' first
-      let match = html.match(/(\d+)\s+(second|minute|hour|day|week|month|year)s?\s+ago/i);
+      let match = rawHtml.match(/(\d+)\s+(second|minute|hour|day|week|month|year)s?\s+ago/i);
       if (match) return match[0].trim();
 
       // Match 'Posted yesterday'
-      match = html.match(/Posted\s+yesterday/i);
+      match = rawHtml.match(/Posted\s+yesterday/i);
       if (match) return 'yesterday';
 
       // Match 'Posted today'
-      match = html.match(/Posted\s+today/i);
+      match = rawHtml.match(/Posted\s+today/i);
       if (match) return 'today';
 
       return null;
     };
 
 
-    const calculatePostedDate = (html) => {
-      const text = extractPostedAgoText(html);
+    const calculatePostedDate = () => {
+      const text = extractPostedAgoText();
       if (!text) return null;
 
       const now = new Date();
