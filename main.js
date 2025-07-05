@@ -18,6 +18,8 @@ let jobList = [];
 app.whenReady().then(async () => {
   settings = await getBotSettings(botId);
 
+  return;
+
   startHeartbeatInterval(settings.heartbeatInterval);
 
   win = await createBrowserWindow(session, screen);
