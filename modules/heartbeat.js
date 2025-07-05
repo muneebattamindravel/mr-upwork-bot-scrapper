@@ -16,6 +16,9 @@ async function sendHeartbeat({ status = '', message = '', jobUrl = '' }) {
 
     const cleanURL = currentJobUrl?.split('?')[0] || '';
 
+    let finalURL = `${backendUrl}/api/bots/heartbeat`;
+    console.log(`FINAL URL : `, finalURL);
+    
     await axios.post(`${backendUrl}/api/bots/heartbeat`, {
       botId,
       status: currentStatus,
