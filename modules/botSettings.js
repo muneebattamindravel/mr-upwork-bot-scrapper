@@ -13,8 +13,8 @@ async function getBotSettings(botId) {
       return cachedSettings;
     }
 
-    console.log(`calling ${process.env.BRAIN_BASE_URL}/bots/bot-settings/${botId}`)
-    const response = await axios.get(`${process.env.BRAIN_BASE_URL}/bots/bot-settings/${botId}`);
+    console.log(`calling ${process.env.BRAIN_BASE_URL}/bots/settings/${botId}`)
+    const response = await axios.get(`${process.env.BRAIN_BASE_URL}/bots/settings/${botId}`);
     console.log(`settings response: `, response);
 
     if (response.data?.success === true && response.data?.data) {
