@@ -25,7 +25,6 @@ app.whenReady().then(async () => {
 
   log('[🧠 Bot Ready]');
 
-  return;
   await startCycle();
 });
 
