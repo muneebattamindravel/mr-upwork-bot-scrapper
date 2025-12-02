@@ -173,7 +173,10 @@ async function registerWithDashboard() {
 
   try {
     console.log(`Brain base Url ${process.env.BRAIN_BASE_URL} BOT ID ${BOT_ID} PORT = ${PORT}`)
-    const res = await axios.post(`${process.env.BRAIN_BASE_URL}/bots/register`, {
+
+    console.log(`my final url ${process.env.BRAIN_BASE_URL}/bots/register}`)
+
+    const res = await axios.post(`${process.env.BRAIN_BASE_URL} /bots/register`, {
       botId: BOT_ID,
       ip,
       port,
