@@ -172,7 +172,11 @@ async function registerWithDashboard() {
   const ip = await getPublicIP();
 
   try {
-    const res = await axios.post(`${process.env.BRAIN_BASE_URL} /bots/register`, {
+
+    const finalURL = `${process.env.BRAIN_BASE_URL} /bots/register`
+    console.log(`Final URL ${finalURL}`)
+
+    const res = await axios.post(finalURL, {
       botId: process.env.BOT_ID,
       ip,
       port,
