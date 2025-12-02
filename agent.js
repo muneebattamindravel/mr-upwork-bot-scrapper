@@ -178,7 +178,7 @@ async function registerWithDashboard() {
       port,
     });
 
-    log('[🔗 Bot Registered] ', res);
+    log('[🔗 Bot Registered] ', res.data);
   } catch (err) {
     console.error('[❌ Registration Failed]', err.message);
   }
