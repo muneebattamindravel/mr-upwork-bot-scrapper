@@ -1,4 +1,4 @@
-const { BrowserWindow, session } = require('electron');
+const { BrowserWindow } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const { log } = require('./utils');
@@ -76,7 +76,7 @@ async function createBrowserWindow(session, screen) {
 //   return win;
 // }
 
-async function createBrowserWindowNoLogin(screen) {
+async function createBrowserWindowNoLogin(session, screen) {
 
   // 🔒 Create incognito (non-persistent) session
   const incognitoSession = session.fromPartition('incognito');
