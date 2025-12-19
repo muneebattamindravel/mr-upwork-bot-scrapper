@@ -54,9 +54,32 @@ async function createBrowserWindow(session, screen) {
   return win;
 }
 
-async function createBrowserWindowNoLogin(session, screen) {
+// async function createBrowserWindowNoLogin(session, screen) {
 
-  const ses = session.defaultSession;
+//   const ses = session.defaultSession;
+
+//   const { width, height } = screen.getPrimaryDisplay().workAreaSize;
+
+//   const win = new BrowserWindow({
+//     x: 0,
+//     y: 0,
+//     width: Math.floor(width / 2),
+//     height,
+//     webPreferences: {
+//       session: ses,
+//       preload: path.join(__dirname, '../preload.js'),
+//       nodeIntegration: false,
+//       contextIsolation: true
+//     }
+//   });
+
+//   return win;
+// }
+
+async function createBrowserWindowNoLogin(screen) {
+
+  // 🔒 Create incognito (non-persistent) session
+  const incognitoSession = session.fromPartition('incognito');
 
   const { width, height } = screen.getPrimaryDisplay().workAreaSize;
 
@@ -66,7 +89,7 @@ async function createBrowserWindowNoLogin(session, screen) {
     width: Math.floor(width / 2),
     height,
     webPreferences: {
-      session: ses,
+      session: incognitoSession,
       preload: path.join(__dirname, '../preload.js'),
       nodeIntegration: false,
       contextIsolation: true
