@@ -81,7 +81,7 @@ async function createBrowserWindowNoLogin(session, screen) {
   // 🔒 Create incognito (non-persistent) session
   const incognitoSession = session.fromPartition('incognito');
 
-  const { width, height } = screen.getPrimaryDisplay().workAreaSize;
+  const { width, height } = screen.getPrimaryDisplay().workAreaSize;;
 
   const win = new BrowserWindow({
     x: 0,
