@@ -96,6 +96,9 @@ async function createBrowserWindowNoLogin(session, screen) {
     }
   });
 
+  await incognitoSession.clearCache();
+  await incognitoSession.clearStorageData();
+
   return win;
 }
 
