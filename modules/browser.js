@@ -1,4 +1,4 @@
-const { BrowserWindow } = require('electron');
+const { BrowserWindow, session } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const { log } = require('./utils');
