@@ -93,7 +93,7 @@ async function dumpAndExtractJobDetails(win, index, originalUrl) {
 
       // Match 'Posted today'
       match = rawHtml.match(/Posted\s+today/i);
-      if (match) return 'today';
+      if (match) return 'today';;
 
       return null;
     };
