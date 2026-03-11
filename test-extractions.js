@@ -75,6 +75,8 @@ function extractAll(rawHtml, fileName) {
   results.projectType = (() => {
     const m = rawHtml.match(/<strong[^>]*>(One-time project|Ongoing project)<\/strong>/i);
     if (m) return m[1].replace(' project', '').trim();
+    const labelMatch = rawHtml.match(/<strong[^>]*>([^<]+)<\/strong>[\s\S]{0,200}class="description"[^>]*>Project Type<\/div>/i);
+    if (labelMatch) return labelMatch[1].trim();
     const fallback = rawHtml.match(/Project Type:<\/strong>\s*<span[^>]*>(.*?)<\/span>/i);
     return fallback ? fallback[1].trim() : '';
   })();
@@ -122,6 +124,11 @@ function extractAll(rawHtml, fileName) {
 
     const titleMatch = rawHtml.match(/<title>[^<]*\$([0-9,]+\.?\d*)\s*Fixed Price/i);
     if (titleMatch) return `$${titleMatch[1]} (fallback-B)`;
+
+    const strongAmounts = [...rawHtml.matchAll(/<strong[^>]*>\$([0-9,]+\.?\d*)<\/strong>/g)]
+      .map(m => m[1]).filter(v => !isNaN(parseFloat(v.replace(/,/g, ''))));
+    if (strongAmounts.length >= 2) return `$${strongAmounts[0]} – $${strongAmounts[1]} (fallback-C)`;
+    if (strongAmounts.length === 1) return `$${strongAmounts[0]} (fallback-C)`;
 
     return '';
   })();

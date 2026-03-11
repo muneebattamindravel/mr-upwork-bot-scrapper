@@ -94,12 +94,17 @@ async function dumpAndExtractJobDetails(win, index, originalUrl) {
 
     // ─── PROJECT TYPE ─────────────────────────────────────────────────────────
     // Primary: <strong>One-time project</strong> or <strong>Ongoing project</strong>
-    // Fallback: "Project Type:" label (old logged-in format)
+    // Fallback B: <strong>VALUE</strong><div class="description">Project Type</div>
+    // Fallback C: "Project Type:" label (old logged-in format)
     const extractProjectType = () => {
       const match = rawHtml.match(/<strong[^>]*>(One-time project|Ongoing project)<\/strong>/i);
       if (match) return match[1].replace(' project', '').trim(); // → "One-time" or "Ongoing"
 
-      // Fallback
+      // Fallback B: no-login format where label follows the value
+      const labelMatch = rawHtml.match(/<strong[^>]*>([^<]+)<\/strong>[\s\S]{0,200}class="description"[^>]*>Project Type<\/div>/i);
+      if (labelMatch) return labelMatch[1].trim();
+
+      // Fallback C: old logged-in format
       const fallback = rawHtml.match(/Project Type:<\/strong>\s*<span[^>]*>(.*?)<\/span>/i);
       return fallback ? fallback[1].trim() : '';
     };
@@ -296,6 +301,12 @@ async function dumpAndExtractJobDetails(win, index, originalUrl) {
         if (!isNaN(amount)) return { minRange: amount, maxRange: amount };
       }
 
+      // Fallback C: hourly/fixed rate shown as <strong>$X</strong> pair in pricing section
+      const strongAmounts = [...rawHtml.matchAll(/<strong[^>]*>\$([0-9,]+\.?\d*)<\/strong>/g)]
+        .map(m => parseFloat(m[1].replace(/,/g, ''))).filter(n => !isNaN(n));
+      if (strongAmounts.length >= 2) return { minRange: strongAmounts[0], maxRange: strongAmounts[1] };
+      if (strongAmounts.length === 1) return { minRange: strongAmounts[0], maxRange: strongAmounts[0] };
+
       return { minRange: 0, maxRange: 0 };
     }
 
@@ -303,29 +314,29 @@ async function dumpAndExtractJobDetails(win, index, originalUrl) {
     const { minRange, maxRange } = extractBudgetRange();
 
     return {
-      title,
-      url: originalUrl.split('?')[0],
-      description: extractDescription(),
-      mainCategory,
-      experienceLevel: extractExperienceLevel(),
-      projectType: extractProjectType(),
-      postedDate: calculatePostedDate(),
-      requiredConnects: extractRequiredConnects(),
-      pricingModel: extractProjectPricingModel(),
-      minRange: cleanDollarValue(minRange),
-      maxRange: cleanDollarValue(maxRange),
-      clientCountry: extractClientCountry(),
-      clientCity: extractClientCity(),
-      clientSpend: cleanDollarValue(extractClientSpend()),
-      clientJobsPosted: extractClientJobsPosted(),
-      clientHires: extractClientHires(),
-      clientHireRate: extractHireRate(),
-      clientAverageHourlyRate: cleanDollarValue(extractClientAverageHourlyRate()),
-      clientMemberSince: extractClientMemberSince(),
-      clientPaymentVerified: extractPaymentVerified(),
-      clientPhoneVerified: extractPhoneVerified(),
-      clientRating: extractClientRating(),
-      clientReviews: extractClientReviews()
+      title:                   title || '',
+      url:                     originalUrl.split('?')[0],
+      description:             extractDescription() || '',
+      mainCategory:            mainCategory || '',
+      experienceLevel:         extractExperienceLevel() || '',
+      projectType:             extractProjectType() || '',
+      postedDate:              calculatePostedDate() ?? null,
+      requiredConnects:        extractRequiredConnects() || 0,
+      pricingModel:            extractProjectPricingModel() || '',
+      minRange:                cleanDollarValue(minRange) ?? 0,
+      maxRange:                cleanDollarValue(maxRange) ?? 0,
+      clientCountry:           extractClientCountry() || '',
+      clientCity:              extractClientCity() || '',
+      clientSpend:             cleanDollarValue(extractClientSpend()) ?? 0,
+      clientJobsPosted:        extractClientJobsPosted() || 0,
+      clientHires:             extractClientHires() || 0,
+      clientHireRate:          extractHireRate() || 0,
+      clientAverageHourlyRate: cleanDollarValue(extractClientAverageHourlyRate()) ?? 0,
+      clientMemberSince:       extractClientMemberSince() || '',
+      clientPaymentVerified:   extractPaymentVerified() ?? false,
+      clientPhoneVerified:     extractPhoneVerified() ?? false,
+      clientRating:            extractClientRating() || 0,
+      clientReviews:           extractClientReviews() || 0,
     };
   }
   catch (exception) {

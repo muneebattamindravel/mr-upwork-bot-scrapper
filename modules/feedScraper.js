@@ -8,23 +8,30 @@ async function scrapeJobFeed(win, botId) {
     const maxJobs = settings.maxJobsPerCycle || 50;
 
     log(`[Feed] Scraping up to ${maxJobs} jobs from feed...`);
-    // [FIX S2] Target job card articles by data-test="JobTile", then extract
-    // the title link inside. Strip referrer query param from URL.
-    // Old selector (broken — also grabbed /nx/search/jobs/ pagination links):
-    // Array.from(document.querySelectorAll('a'))
-    //   .filter(a => a.href.includes('/jobs/') && a.innerText.trim().length > 10)
     const jobList = await win.webContents.executeJavaScript(`
       (() => {
+        // Primary: structured job tile articles
         const tiles = Array.from(document.querySelectorAll('article[data-test="JobTile"]'));
-        return tiles.slice(0, ${maxJobs}).map(tile => {
-          const anchor = tile.querySelector('a[data-test="job-tile-title-link"]');
-          if (!anchor) return null;
-          const href = anchor.getAttribute('href');
-          const rawUrl = href.startsWith('http') ? href : 'https://www.upwork.com' + href;
-          const url = rawUrl.split('?')[0];
-          const title = anchor.innerText.trim();
-          return { title, url };
-        }).filter(Boolean);
+        if (tiles.length > 0) {
+          return tiles.slice(0, ${maxJobs}).map(tile => {
+            const anchor = tile.querySelector('a[data-test="job-tile-title-link"]') || tile.querySelector('a[href*="/jobs/~"]');
+            if (!anchor) return null;
+            const href = anchor.getAttribute('href');
+            const rawUrl = href.startsWith('http') ? href : 'https://www.upwork.com' + href;
+            const url = rawUrl.split('?')[0];
+            const title = anchor.innerText.trim();
+            return { title, url };
+          }).filter(Boolean);
+        }
+
+        // Fallback: all job links on the page, excluding feed/search/pagination URLs
+        return Array.from(document.querySelectorAll('a'))
+          .filter(a => a.href.includes('/jobs/~') && a.innerText.trim().length > 5)
+          .slice(0, ${maxJobs})
+          .map(a => ({
+            title: a.innerText.trim(),
+            url: a.href.split('?')[0]
+          }));
       })()
     `);
 
