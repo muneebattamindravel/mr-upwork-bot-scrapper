@@ -7,7 +7,7 @@ let jobList = [];
 async function scrapeJobFeed(win, botId) {
   try {
     const settings = await getBotSettings(botId);
-    const maxJobs = settings.maxJobsPerCycle || 50;
+    const maxJobs = settings.maxJobsPerCycle || 50;;
 
     log(`[Feed] Scraping up to ${maxJobs} jobs from feed...`);
     jobList = await win.webContents.executeJavaScript(`
