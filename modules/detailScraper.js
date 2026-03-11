@@ -32,92 +32,118 @@ async function dumpAndExtractJobDetails(win, index, originalUrl) {
 
   try {
 
-
-
     // [FIX S3] Get HTML directly from browser — no need to read back from disk
     // Still saving to disk for debugging purposes
     const rawHtml = await win.webContents.executeJavaScript('document.documentElement.outerHTML');
     const filePath = path.join(__dirname, '..', 'html-dumps', `job_detail_dump_${index}.html`);
-    fs.writeFileSync(filePath, rawHtml, 'utf-8');
+    fs.promises.writeFile(filePath, rawHtml, 'utf-8').catch(e => log('[detailScraper] Dump write failed:', e.message));
     // const buffer = fs.readFileSync(filePath);
     // const rawHtml = new TextDecoder('utf-8').decode(buffer);
 
+    // ─── TITLE & CATEGORY ────────────────────────────────────────────────────
+    // Title format (no-login): "Job Title - Freelance Job in Category - Budget/Hours - Upwork"
     const extractTitleAndCategory = () => {
-      const match = rawHtml.match(/<title>(.*?)<\/title>/i);
-      if (!match) return { title: '', mainCategory: '' };
-      const [titlePart, categoryPart] = match[1].split(' - ');
+      const match = rawHtml.match(/<title>([^<]+)<\/title>/i);
+      if (!match || match[1].trim() === 'Upwork') return { title: '', mainCategory: '' };
+      const titleStr = match[1];
+
+      // Everything before " - Freelance Job"
+      const titleMatch = titleStr.match(/^(.+?)\s*-\s*Freelance Job/i);
+      // Everything after "Freelance Job in " up to next " - "
+      const categoryMatch = titleStr.match(/Freelance Job in ([^-]+)/i);
+
       return {
-        title: titlePart?.trim() || '',
-        mainCategory: decodeHTMLEntities(categoryPart?.trim() || '')
+        title: titleMatch ? decodeHTMLEntities(titleMatch[1].trim()) : '',
+        mainCategory: categoryMatch ? decodeHTMLEntities(categoryMatch[1].trim()) : ''
       };
     };
 
+    // ─── DESCRIPTION ─────────────────────────────────────────────────────────
+    // Primary: data-test="Description" section with multiline-text class
+    // Fallback: Summary marker approach (old logged-in format)
     const extractDescription = () => {
+      // Primary: no-login page format
+      const descMatch = rawHtml.match(/data-test="Description"[\s\S]*?<p[^>]*class="[^"]*multiline-text[^"]*"[^>]*>([\s\S]*?)<\/p>/i);
+      if (descMatch) {
+        return descMatch[1].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+      }
+
+      // Fallback: Summary keyword approach (logged-in page format)
       const summaryIndex = rawHtml.indexOf('Summary');
       if (summaryIndex === -1) return '';
-
-      // Move to first ">" after Summary
       const nextGtIndex = rawHtml.indexOf('>', summaryIndex);
       if (nextGtIndex === -1) return '';
-
-      // Find the end marker
       const endMarker = '<!----></div>';
       const endIndex = rawHtml.indexOf(endMarker, nextGtIndex);
       if (endIndex === -1) return '';
-
       const htmlBlock = rawHtml.substring(nextGtIndex + 1, endIndex).trim();
-
-      // Strip tags and normalize spacing
-      const textOnly = htmlBlock.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
-      return textOnly;
+      return htmlBlock.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
     };
 
-    const extractProjectType = () => {
-      const match = rawHtml.match(/Project Type:<\/strong>\s*<span[^>]*>(.*?)<\/span>/i);
-      return match ? match[1].trim() : '';
-    };
-
+    // ─── EXPERIENCE LEVEL ────────────────────────────────────────────────────
+    // Primary: data-cy="expertise" followed by <div class="description">
+    // Fallback: <strong> tag (old logged-in format)
     const extractExperienceLevel = () => {
-      const match = rawHtml.match(/<strong[^>]*>\s*(Entry|Intermediate|Expert)\s*<\/strong>/i);
-      return match ? match[1].trim() : '';
+      const match = rawHtml.match(/data-cy="expertise"[\s\S]{0,500}<div class="description"[^>]*>([^<]+)/i);
+      if (match) return match[1].trim();
+
+      // Fallback
+      const fallback = rawHtml.match(/<strong[^>]*>\s*(Entry level|Entry|Intermediate|Expert)\s*<\/strong>/i);
+      return fallback ? fallback[1].trim() : '';
     };
 
-    const extractPostedAgoText = (html) => {
-      // Match 'X unit ago' first
+    // ─── PROJECT TYPE ─────────────────────────────────────────────────────────
+    // Primary: <strong>One-time project</strong> or <strong>Ongoing project</strong>
+    // Fallback: "Project Type:" label (old logged-in format)
+    const extractProjectType = () => {
+      const match = rawHtml.match(/<strong[^>]*>(One-time project|Ongoing project)<\/strong>/i);
+      if (match) return match[1].replace(' project', '').trim(); // → "One-time" or "Ongoing"
+
+      // Fallback
+      const fallback = rawHtml.match(/Project Type:<\/strong>\s*<span[^>]*>(.*?)<\/span>/i);
+      return fallback ? fallback[1].trim() : '';
+    };
+
+    // ─── POSTED DATE ─────────────────────────────────────────────────────────
+    const extractPostedAgoText = () => {
+      // 1. Relative numeric: "3 hours ago", "2 days ago", etc.
       let match = rawHtml.match(/(\d+)\s+(second|minute|hour|day|week|month|year)s?\s+ago/i);
-      if (match) return match[0].trim();;
+      if (match) return match[0].trim();
 
-      // Match 'Posted yesterday'
-      match = rawHtml.match(/Posted\s+yesterday/i);
-      if (match) return 'yesterday';
+      // 2. "last week" / "last month" inside posted-on-line span
+      match = rawHtml.match(/Posted\s*<span[^>]*>(last\s+\w+)<\/span>/i);
+      if (match) return match[1].trim();
 
-      // Match 'Posted today'
-      match = rawHtml.match(/Posted\s+today/i);;
-      if (match) return 'today';;
+      // 3. "yesterday" / "today"
+      if (/Posted\s+yesterday/i.test(rawHtml)) return 'yesterday';
+      if (/Posted\s+today/i.test(rawHtml)) return 'today';
+
+      // 4. Exact date from title: "posted December 11, 2025"
+      const titleMatch = rawHtml.match(/<title>[^<]*posted\s+(\w+ \d+, \d{4})/i);
+      if (titleMatch) return `date:${titleMatch[1]}`;
 
       return null;
     };
-
 
     const calculatePostedDate = () => {
       const text = extractPostedAgoText();
       if (!text) return null;
 
+      // Exact date string from title
+      if (text.startsWith('date:')) {
+        const date = new Date(text.slice(5));
+        return isNaN(date.getTime()) ? null : date;
+      }
+
       const now = new Date();
 
-      if (text === 'yesterday') {
-        now.setDate(now.getDate() - 1);
-        return now;
-      }
+      if (text === 'yesterday') { now.setDate(now.getDate() - 1); return now; }
+      if (text === 'today') return now;
+      if (/last\s+week/i.test(text)) { now.setDate(now.getDate() - 7); return now; }
+      if (/last\s+month/i.test(text)) { now.setMonth(now.getMonth() - 1); return now; }
 
-      if (text === 'today') {
-        return now;
-      }
-
-      // Fallback for 'X unit ago'
       const parts = text.toLowerCase().split(' ');
       if (parts.length < 2) return now;
-
       const value = parseInt(parts[0]);
       const unit = parts[1];
 
@@ -132,145 +158,145 @@ async function dumpAndExtractJobDetails(win, index, originalUrl) {
       return now;
     };
 
-
+    // ─── REQUIRED CONNECTS ───────────────────────────────────────────────────
+    // NOT available on no-login pages — kept for potential future re-use
     const extractRequiredConnects = () => {
       // Case 1: Match number before "required connects"
-      const match1 = rawHtml.match(/>([^<]*?)\s*required\s+connects/i);
-      if (match1) {
-        const num = match1[1].replace(/\s+/g, '').match(/\d+/);
-        if (num) return parseInt(num[0], 10);
-      }
-
+      // const match1 = rawHtml.match(/>([^<]*?)\s*required\s+connects/i);
+      // if (match1) { const num = match1[1].replace(/\s+/g, '').match(/\d+/); if (num) return parseInt(num[0], 10); }
       // Case 2: Match after "Send a proposal for:"
-      const match2 = rawHtml.match(/Send a proposal for:\s*<[^>]*>([^<]*)<\/strong>/i);
-      if (match2) {
-        const cleaned = match2[1].replace(/connects?/i, '').replace(/\s+/g, '');
-        const num = cleaned.match(/\d+/);
-        if (num) return parseInt(num[0], 10);
-      }
-
+      // const match2 = rawHtml.match(/Send a proposal for:\s*<[^>]*>([^<]*)<\/strong>/i);
+      // if (match2) { const cleaned = match2[1].replace(/connects?/i, '').replace(/\s+/g, ''); const num = cleaned.match(/\d+/); if (num) return parseInt(num[0], 10); }
       return '';
     };
 
-
+    // ─── CLIENT COUNTRY & CITY ───────────────────────────────────────────────
+    // Structure: data-qa="client-location" > <strong>Country</strong> > <span class="nowrap">City</span>
     const extractClientCountry = () => {
-      const match = rawHtml.match(/<li[^>]*data-qa="client-location"[^>]*>\s*<strong[^>]*>(.*?)<\/strong>/i);
+      const match = rawHtml.match(/data-qa="client-location"[^>]*>[\s\S]{0,100}<strong[^>]*>([^<]+)<\/strong>/i);
       return match ? match[1].trim() : '';
     };
 
     const extractClientCity = () => {
-      const match = rawHtml.match(
-        /<li[^>]*data-qa="client-location"[^>]*>[\s\S]*?<div[^>]*>\s*<span[^>]*>([^<]*)<\/span>/i
-      );
+      const match = rawHtml.match(/data-qa="client-location"[^>]*>[\s\S]*?<span class="nowrap"[^>]*>([^<]+)<\/span>/i);
       return match ? match[1].trim() : '';
     };
 
+    // ─── CLIENT SPEND ────────────────────────────────────────────────────────
+    // Structure: data-qa="client-spend" > <span>$648K</span> total spent
     const extractClientSpend = () => {
-      const match = rawHtml.match(/>([^<>]+)<[^<]*total spent/i);
-      return match ? match[1].trim().replace(/\s+/g, '') : '';
+      const match = rawHtml.match(/data-qa="client-spend"[^>]*>[\s\S]{0,100}<span[^>]*>([^<]+)<\/span>/i);
+      return match ? match[1].trim() : '';
     };
 
-
+    // ─── CLIENT HIRES ────────────────────────────────────────────────────────
+    // Structure: data-qa="client-hires">1,841 hires, 375 active</div>
     const extractClientHires = () => {
-      const match = rawHtml.match(/<div[^>]*data-qa="client-hires"[^>]*>([\s\S]*?)<\/div>/i);
+      const match = rawHtml.match(/data-qa="client-hires"[^>]*>([^<]+)/i);
       if (match) {
-        const text = match[1].replace(/<[^>]*>/g, '').trim(); // Strip inner HTML
-        const hiresMatch = text.match(/([\d,]+)\s+hires?/i);
-        return hiresMatch ? parseInt(hiresMatch[1].replace(/,/g, '')) : '';
+        const num = match[1].match(/([\d,]+)\s+hires?/i);
+        return num ? parseInt(num[1].replace(/,/g, '')) : '';
       }
       return '';
     };
 
-
+    // ─── HIRE RATE ───────────────────────────────────────────────────────────
+    // NOT available on no-login pages
     const extractHireRate = () => {
-      const match = rawHtml.match(/>([\d,.]+)%\s*hire rate/i);
-      return match ? parseFloat(match[1].replace(/,/g, '')) : '';
+      return '';
     };
 
-
-
+    // ─── CLIENT MEMBER SINCE ─────────────────────────────────────────────────
     const extractClientMemberSince = () => {
       const match = rawHtml.match(/Member since\s*([^<]+)/i);
       return match ? match[1].trim() : '';
     };
 
-
+    // ─── PAYMENT / PHONE VERIFIED ────────────────────────────────────────────
+    // These are NOT shown on no-login pages — always return false
+    // Kept as comments for reference if login mode is re-enabled
     const extractPaymentVerified = () => {
-      return /payment method verified/i.test(rawHtml);
+      // return /payment method verified/i.test(rawHtml);
+      return false;
     };
 
     const extractPhoneVerified = () => {
-      return /phone number verified/i.test(rawHtml);
+      // return /phone number verified/i.test(rawHtml);
+      return false;
     };
 
+    // ─── CLIENT RATING & REVIEWS ─────────────────────────────────────────────
+    // NOT available per-client on no-login pages.
+    // The "Rating is 4.9" shown on Upwork public pages is Upwork's platform-wide
+    // average (Average rating of clients by professionals), not this client's rating.
     const extractClientRating = () => {
-      const index = rawHtml.indexOf('data-qa="client-location"');
-      if (index === -1) return '';
-      const snippet = rawHtml.slice(Math.max(0, index - 4000), index);
-      const match = snippet.match(/Rating\s+is\s+(\d+(\.\d+)?)/i);
-      return match ? parseFloat(match[1]) : '';
-    };
-
-
-    const extractClientReviews = () => {
-      const index = rawHtml.indexOf('data-qa="client-location"');
-      if (index === -1) return '';
-      const snippet = rawHtml.slice(Math.max(0, index - 4000), index);
-      const match = snippet.match(/([\d,]+)\s+reviews?/i);
-      return match ? parseInt(match[1].replace(/,/g, '')) : '';
-    };
-
-
-    const extractClientJobsPosted = () => {
-      const match = rawHtml.match(/([\d,]+)\s+jobs\s+posted/i);
-      return match ? parseInt(match[1].replace(/,/g, '')) : '';
-    };
-
-
-    const extractClientAverageHourlyRate = () => {
-      const match = rawHtml.match(/<strong[^>]*data-qa="client-hourly-rate"[^>]*>\s*\$([\d,.]+)/i);
-      if (!match) return '';
-      return parseFloat(match[1].replace(/,/g, '')); // Remove comma, convert to float
-    };
-
-
-    const extractProjectPricingModel = () => {
-      if (rawHtml.includes('Fixed-price</div>')) return 'Fixed';
-      if (rawHtml.includes('Hourly</div>')) return 'Hourly';
       return '';
     };
 
+    const extractClientReviews = () => {
+      return '';
+    };
+
+    // ─── CLIENT JOBS POSTED ──────────────────────────────────────────────────
+    // NOT available on no-login pages
+    const extractClientJobsPosted = () => {
+      return '';
+    };
+
+    // ─── CLIENT AVERAGE HOURLY RATE ──────────────────────────────────────────
+    // NOT available on no-login pages
+    const extractClientAverageHourlyRate = () => {
+      // return /data-qa="client-hourly-rate"/ approach was for logged-in pages only
+      return '';
+    };
+
+    // ─── PRICING MODEL ───────────────────────────────────────────────────────
+    // Checks for data-cy attributes or description divs
+    const extractProjectPricingModel = () => {
+      if (/data-cy="fixed-price"/i.test(rawHtml) || rawHtml.includes('Fixed-price</div>')) return 'Fixed';
+      if (/data-cy="clock-hourly"/i.test(rawHtml) || rawHtml.includes('Hourly</div>')) return 'Hourly';
+      return '';
+    };
+
+    // ─── BUDGET RANGE ────────────────────────────────────────────────────────
+    // Primary: BudgetAmount keyword (still works on some pages)
+    // Fallback A: <strong>$X.XX</strong> near Fixed-price (no-login format)
+    // Fallback B: Title tag "$X.XX Fixed Price"
     function extractBudgetRange() {
       const ranges = [];
       const budgetKeyword = 'BudgetAmount';
-      let index = 0;
+      let idx = 0;
 
-      while ((index = rawHtml.indexOf(budgetKeyword, index)) !== -1) {
-        let i = index;
+      while ((idx = rawHtml.indexOf(budgetKeyword, idx)) !== -1) {
+        let i = idx;
         while (i < rawHtml.length && rawHtml[i] !== '$') i++;
         if (i >= rawHtml.length) break;
-        i++; // move past $
-
-        let valueChars = [];
-        while (i < rawHtml.length && rawHtml[i] !== '<') {
-          valueChars.push(rawHtml[i]);
-          i++;
-        }
-
-        const valueStr = valueChars.join('').trim().replace(/,/g, '');
-        const amount = parseFloat(valueStr);
+        i++;
+        const valueChars = [];
+        while (i < rawHtml.length && rawHtml[i] !== '<') { valueChars.push(rawHtml[i]); i++; }
+        const amount = parseFloat(valueChars.join('').trim().replace(/,/g, ''));
         if (!isNaN(amount)) ranges.push(amount);
-
-        index += budgetKeyword.length;
+        idx += budgetKeyword.length;
       }
 
-      if (ranges.length === 1) {
-        return { minRange: ranges[0], maxRange: ranges[0] };
-      } else if (ranges.length >= 2) {
-        return { minRange: ranges[0], maxRange: ranges[1] };
-      } else {
-        return { minRange: 0, maxRange: 0 };
+      if (ranges.length === 1) return { minRange: ranges[0], maxRange: ranges[0] };
+      if (ranges.length >= 2) return { minRange: ranges[0], maxRange: ranges[1] };
+
+      // Fallback A: <strong>$X</strong> appearing before "Fixed-price"
+      const fixedMatch = rawHtml.match(/<strong[^>]*>\$([0-9,]+\.?\d*)<\/strong>[\s\S]{0,300}Fixed-price/i);
+      if (fixedMatch) {
+        const amount = parseFloat(fixedMatch[1].replace(/,/g, ''));
+        if (!isNaN(amount)) return { minRange: amount, maxRange: amount };
       }
+
+      // Fallback B: title tag "$X,XXX.XX Fixed Price"
+      const titleMatch = rawHtml.match(/<title>[^<]*\$([0-9,]+\.?\d*)\s*Fixed Price/i);
+      if (titleMatch) {
+        const amount = parseFloat(titleMatch[1].replace(/,/g, ''));
+        if (!isNaN(amount)) return { minRange: amount, maxRange: amount };
+      }
+
+      return { minRange: 0, maxRange: 0 };
     }
 
     const { title, mainCategory } = extractTitleAndCategory();

@@ -2,8 +2,6 @@ const { getBotSettings } = require('./botSettings');
 const { sendHeartbeat } = require('./heartbeat');
 const { log } = require('./utils');
 
-let jobList = [];
-
 async function scrapeJobFeed(win, botId) {
   try {
     const settings = await getBotSettings(botId);
@@ -15,7 +13,7 @@ async function scrapeJobFeed(win, botId) {
     // Old selector (broken — also grabbed /nx/search/jobs/ pagination links):
     // Array.from(document.querySelectorAll('a'))
     //   .filter(a => a.href.includes('/jobs/') && a.innerText.trim().length > 10)
-    jobList = await win.webContents.executeJavaScript(`
+    const jobList = await win.webContents.executeJavaScript(`
       (() => {
         const tiles = Array.from(document.querySelectorAll('article[data-test="JobTile"]'));
         return tiles.slice(0, ${maxJobs}).map(tile => {
