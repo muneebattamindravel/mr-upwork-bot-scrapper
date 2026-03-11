@@ -29,6 +29,7 @@ async function startCycle() {
     try {
 
       jobList = [];
+      jobList.length = 0;
 
       settings = await getBotSettings(botId);
       await sendHeartbeat({ status: 'navigating_feed', message: 'Opening Upwork job feed' });
