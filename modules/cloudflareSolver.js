@@ -4,7 +4,13 @@ const { getBotSettings } = require('./botSettings');
 const { exec } = require('child_process');
 const { log } = require('./utils');
 
-async function solveCloudflareIfPresent(win, botId) {
+// [FIX S4] Added depth param to prevent infinite recursion if Cloudflare never resolves
+async function solveCloudflareIfPresent(win, botId, depth = 0) {
+  if (depth >= 3) {
+    log('[Cloudflare] Max retries reached. Moving on.');
+    await sendHeartbeat({ status: 'cloudflare_failed', message: 'Could not solve Cloudflare after 3 attempts' });
+    return;
+  }
   log('[Cloudflare] Checking...');
 
   const isCloudflare = await win.webContents.executeJavaScript(`
@@ -29,7 +35,7 @@ async function solveCloudflareIfPresent(win, botId) {
     await runAhkClick();
     await wait(waitAfterClick);
 
-    return await solveCloudflareIfPresent(win, botId);
+    return await solveCloudflareIfPresent(win, botId, depth + 1);
   } else {
     log('[Cloudflare] Passed.');
     await sendHeartbeat({ status: 'cloudflare_passed', message: 'Cloudflare Passed' });

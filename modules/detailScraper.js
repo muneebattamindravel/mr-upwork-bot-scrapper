@@ -34,13 +34,13 @@ async function dumpAndExtractJobDetails(win, index, originalUrl) {
 
 
 
-    const html = await win.webContents.executeJavaScript('document.documentElement.outerHTML');
+    // [FIX S3] Get HTML directly from browser — no need to read back from disk
+    // Still saving to disk for debugging purposes
+    const rawHtml = await win.webContents.executeJavaScript('document.documentElement.outerHTML');
     const filePath = path.join(__dirname, '..', 'html-dumps', `job_detail_dump_${index}.html`);
-
-    fs.writeFileSync(filePath, html, 'utf-8');
-
-    const buffer = fs.readFileSync(filePath);
-    const rawHtml = new TextDecoder('utf-8').decode(buffer);
+    fs.writeFileSync(filePath, rawHtml, 'utf-8');
+    // const buffer = fs.readFileSync(filePath);
+    // const rawHtml = new TextDecoder('utf-8').decode(buffer);
 
     const extractTitleAndCategory = () => {
       const match = rawHtml.match(/<title>(.*?)<\/title>/i);
@@ -303,7 +303,10 @@ async function dumpAndExtractJobDetails(win, index, originalUrl) {
     };
   }
   catch (exception) {
-    log('Exception', exception)
+    // [FIX S5] Return null explicitly — caller does { ...job, ...details },
+    // spreading undefined throws TypeError
+    log('[detailScraper] Exception:', exception);
+    return null;
   }
 }
 

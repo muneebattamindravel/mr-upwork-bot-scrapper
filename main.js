@@ -6,7 +6,7 @@ const { solveCloudflareIfPresent } = require('./modules/cloudflareSolver');
 const { scrapeJobFeed } = require('./modules/feedScraper');
 const { scrapeJobDetail } = require('./modules/detailScraper');
 const { sendHeartbeat, startHeartbeatInterval } = require('./modules/heartbeat');
-const { isLoginPage, shouldVisitJob, postJobToBackend, wait, log } = require('./modules/utils');
+const { /*isLoginPage,*/ shouldVisitJob, postJobToBackend, wait, log } = require('./modules/utils');
 const { getBotSettings } = require('./modules/botSettings');
 
 const botId = process.env.BOT_ID || 'bot-001';
@@ -57,11 +57,12 @@ async function startCycle() {
       await wait(settings.feedWait || 5000);
       await solveCloudflareIfPresent(win, botId);
 
-      if (await isLoginPage(win)) {
-        log('[Login Detected] Bot redirected to login!');
-        await sendHeartbeat({ status: 'login_detected', message: '⚠️ Bot stuck at login. Refresh cookies.', jobUrl: '' });
-        return;
-      }
+      // [FIX S1] Disabled: no-login mode — Upwork never redirects to login page
+      // if (await isLoginPage(win)) {
+      //   log('[Login Detected] Bot redirected to login!');
+      //   await sendHeartbeat({ status: 'login_detected', message: '⚠️ Bot stuck at login. Refresh cookies.', jobUrl: '' });
+      //   return;
+      // }
 
       await sendHeartbeat({ status: 'scraping_feed', message: 'Extracting job links' });
       jobList = await scrapeJobFeed(win, botId);
