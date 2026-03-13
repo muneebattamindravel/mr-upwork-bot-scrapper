@@ -193,6 +193,20 @@ function startCommandPolling() {
           detached: true, stdio: 'ignore', shell: true,
         }).unref();
         log('[Agent] Bot start command executed');
+        // Capture PID after bot launches so stop command can use taskkill /PID reliably
+        setTimeout(() => {
+          const wmicCommand = `wmic process where "CommandLine like '%--bot-tag=${BOT_TAG}%'" get ProcessId`;
+          exec(wmicCommand, (err, stdout) => {
+            if (err) { log('[Agent] PID detection error:', err.message); return; }
+            const match = stdout.match(/(\d+)/g);
+            if (match && match.length > 0) {
+              botWindowPid = parseInt(match[0]);
+              log(`[Agent] Bot PID captured: ${botWindowPid}`);
+            } else {
+              log('[Agent] Bot started but PID not found via wmic');
+            }
+          });
+        }, 2500);
 
       } else if (command === 'stop') {
         log('[Agent] Received stop command from brain');
