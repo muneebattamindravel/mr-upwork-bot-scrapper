@@ -44,6 +44,7 @@ async function startCycle() {
       baseUrl.searchParams.set('page', '1');
       baseUrl.searchParams.set('per_page', maxJobs.toString());
       baseUrl.searchParams.set('sort', 'recency');
+      baseUrl.searchParams.set('location_type', 'worldwide'); // show global jobs regardless of EC2 IP region
 
       if (query) {
         baseUrl.searchParams.set('q', query);
