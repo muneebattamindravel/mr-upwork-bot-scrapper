@@ -5,6 +5,7 @@ const path = require('path');
 const dotenv = require('dotenv');
 const axios = require('axios');
 const https = require('https');
+const { io: ioClient } = require('socket.io-client');
 const { log } = require('./modules/utils');
 
 const app = express();
@@ -19,11 +20,15 @@ const BAT_PATH = path.join(__dirname, 'start-bot.bat');
 
 let botWindowPid = null;
 
+// socketRef lets the polling fallback check socket.connected without a closure issue
+const socketRef = { current: null };
+
 const PORT = 4001;
 app.listen(PORT, () => {
   log(`🤖 Bot agent listening at http://localhost:${PORT}`);
   registerWithDashboard();
-  startCommandPolling();
+  socketRef.current = startBrainSocket();
+  startCommandPolling(socketRef);
 });
 
 // ✅ Check if a PID is still alive
@@ -68,161 +73,131 @@ app.get('/status', async (req, res) => {
 });
 
 app.post('/start-bot', async (req, res) => {
-  if (botWindowPid) {
-    const alive = await isPidAlive(botWindowPid);
-    if (alive) {
-      return res.json({
-        success: true,
-        message: 'Bot already running',
-        data: { pid: botWindowPid }
-      });
-    } else {
-      botWindowPid = null;
-    }
-  }
-
   try {
-    spawn('cmd.exe', ['/c', 'start', '"UPWORK_SCRAPER_BOT_WINDOW"', 'cmd', '/k', BAT_PATH], {
-      detached: true,
-      stdio: 'ignore',
-      shell: true,
-    }).unref();
-
-    log('[🟡 BOT LAUNCHING...]');
-
-    // ✅ Delay without exiting early
-    await new Promise(resolve => setTimeout(resolve, 2500));
-
-    const wmicCommand = `wmic process where "CommandLine like '%--bot-tag=${BOT_TAG}%'" get ProcessId`;
-    exec(wmicCommand, async (err, stdout) => {
-      if (err) {
-        console.error('[❌ PID DETECTION FAILED]', err.message);
-        return res.status(500).json({
-          success: false,
-          message: 'Failed to detect PID',
-          error: err.message
-        });
-      }
-
-      const match = stdout.match(/(\d+)/g);
-      if (match && match.length > 0) {
-        botWindowPid = parseInt(match[0]);
-        log(`[✅ BOT STARTED] PID: ${botWindowPid}`);
-
-        //await updateStatusOnDashboard('healthy', 'Bot started from agent');
-
-        return res.json({
-          success: true,
-          message: '✅ Bot started',
-          data: { pid: botWindowPid }
-        });
-      } else {
-        log('[⚠️ BOT STARTED but PID not found]');
-        return res.json({
-          success: false,
-          message: '⚠️ Bot started, but PID not found',
-          data: {}
-        });
-      }
-    });
-
+    await executeStart();
+    return res.json({ success: true, message: '✅ Bot start initiated', data: {} });
   } catch (error) {
     console.error('[❌ BOT START ERROR]', error.message);
-    return res.status(500).json({
-      success: false,
-      message: 'Bot start failed',
-      error: error.message
-    });
+    return res.status(500).json({ success: false, message: 'Bot start failed', error: error.message });
   }
 });
 
 // ✅ Stop Bot
 app.post('/stop-bot', (req, res) => {
-  const killCommand = botWindowPid
-    ? `taskkill /PID ${botWindowPid} /T /F`
-    : `taskkill /FI "WINDOWTITLE eq UPWORK_SCRAPER_BOT_WINDOW" /T /F`;
-
-  log('[🛑 STOP COMMAND]', killCommand);
-
-  exec(killCommand, async (err, stdout, stderr) => {
-    if (err) {
-      log('[❌ STOP ERROR]', stderr || err.message);
-      return res.status(500).json({
-        success: false,
-        message: 'Failed to stop bot',
-        data: { error: stderr || err.message }
-      });
-    }
-
-    log(`[🛑 BOT STOPPED]`);
-    botWindowPid = null;
-
-    //('offline', 'Bot stopped from agent');
-
-    return res.status(200).json({
-      success: true,
-      message: '✅ Bot stopped successfully',
-      data: null
-    });
-  });
+  executeStop(socketRef.current);
+  return res.status(200).json({ success: true, message: '✅ Stop command executed', data: null });
 });
 
-// ── Command polling ────────────────────────────────────────────────────────────
-// Polls brain every 5s for a pending 'start' or 'stop' command queued by the
-// dashboard. This avoids the brain needing to reach EC2 port 4001 directly.
-function startCommandPolling() {
+// ── Shared start/stop execution (used by both socket and HTTP endpoints) ──────
+
+async function executeStart() {
+  if (botWindowPid) {
+    const alive = await isPidAlive(botWindowPid);
+    if (alive) { log('[Agent] Bot already running, ignoring start'); return; }
+    botWindowPid = null;
+  }
+  spawn('cmd.exe', ['/c', 'start', '"UPWORK_SCRAPER_BOT_WINDOW"', 'cmd', '/k', BAT_PATH], {
+    detached: true, stdio: 'ignore', shell: true,
+  }).unref();
+  log('[Agent] Bot start command executed');
+  // Capture PID so stop can use taskkill /PID reliably
+  setTimeout(() => {
+    const wmicCommand = `wmic process where "CommandLine like '%--bot-tag=${BOT_TAG}%'" get ProcessId`;
+    exec(wmicCommand, (err, stdout) => {
+      if (err) { log('[Agent] PID detection error:', err.message); return; }
+      const match = stdout.match(/(\d+)/g);
+      if (match && match.length > 0) {
+        botWindowPid = parseInt(match[0]);
+        log(`[Agent] Bot PID captured: ${botWindowPid}`);
+      } else {
+        log('[Agent] Bot started but PID not found via wmic');
+      }
+    });
+  }, 2500);
+}
+
+function executeStop(socket) {
+  const killCmd = botWindowPid
+    ? `taskkill /PID ${botWindowPid} /T /F`
+    : `taskkill /FI "WINDOWTITLE eq UPWORK_SCRAPER_BOT_WINDOW" /T /F`;
+  exec(killCmd, (err) => {
+    if (err) {
+      log('[Agent] Stop error:', err.message);
+      if (socket) socket.emit('agent:command_result', { botId: BOT_ID, command: 'stop', success: false });
+    } else {
+      log('[Agent] Bot stopped');
+      if (socket) socket.emit('agent:command_result', { botId: BOT_ID, command: 'stop', success: true });
+    }
+  });
+  botWindowPid = null;
+}
+
+// ── Socket.IO connection to brain ─────────────────────────────────────────────
+// Primary channel for receiving commands (instant delivery).
+// Falls back to HTTP polling if socket is disconnected.
+function startBrainSocket() {
+  const BRAIN_URL = process.env.BRAIN_BASE_URL;
+  if (!BRAIN_URL) { log('[Socket] BRAIN_BASE_URL not set — skipping socket'); return null; }
+
+  // Derive the socket origin (strip the /up-bot-brain-api path if present)
+  const socketOrigin = BRAIN_URL.replace(/\/up-bot-brain-api\/?$/, '');
+
+  const socket = ioClient(socketOrigin, {
+    path: '/up-bot-brain-api/socket.io',
+    reconnection: true,
+    reconnectionDelay: 3000,
+    reconnectionDelayMax: 15000,
+    reconnectionAttempts: Infinity,
+    transports: ['websocket', 'polling'],
+  });
+
+  socket.on('connect', () => {
+    log(`[Socket] Connected to brain (id=${socket.id})`);
+    socket.emit('agent:register', { botId: BOT_ID });
+  });
+
+  socket.on('bot:command', async ({ command }) => {
+    log(`[Socket] Received command: ${command}`);
+    if (command === 'start') {
+      await executeStart();
+    } else if (command === 'stop') {
+      executeStop(socket);
+    }
+  });
+
+  socket.on('disconnect', (reason) => log(`[Socket] Disconnected: ${reason}`));
+  socket.on('connect_error', (err) => log(`[Socket] Connection error: ${err.message}`));
+
+  return socket;
+}
+
+// ── HTTP polling fallback ─────────────────────────────────────────────────────
+// Polls brain every 5s. Handles the rare case where the socket is temporarily
+// disconnected and a command was queued in the DB during that window.
+function startCommandPolling(socketRef) {
   const POLL_INTERVAL = 5000;
   const botId = process.env.BOT_ID;
 
   setInterval(async () => {
+    // Skip poll while socket is connected — socket already handles commands instantly
+    if (socketRef.current?.connected) return;
+
     try {
       const res = await axios.get(
         `${process.env.BRAIN_BASE_URL}/bots/poll-command/${botId}`,
         { timeout: 4000 }
       );
       const command = res.data?.data?.command;
-
       if (command === 'start') {
-        log('[Agent] Received start command from brain');
-        if (botWindowPid) {
-          const alive = await isPidAlive(botWindowPid);
-          if (alive) { log('[Agent] Bot already running, ignoring start'); return; }
-          botWindowPid = null;
-        }
-        spawn('cmd.exe', ['/c', 'start', '"UPWORK_SCRAPER_BOT_WINDOW"', 'cmd', '/k', BAT_PATH], {
-          detached: true, stdio: 'ignore', shell: true,
-        }).unref();
-        log('[Agent] Bot start command executed');
-        // Capture PID after bot launches so stop command can use taskkill /PID reliably
-        setTimeout(() => {
-          const wmicCommand = `wmic process where "CommandLine like '%--bot-tag=${BOT_TAG}%'" get ProcessId`;
-          exec(wmicCommand, (err, stdout) => {
-            if (err) { log('[Agent] PID detection error:', err.message); return; }
-            const match = stdout.match(/(\d+)/g);
-            if (match && match.length > 0) {
-              botWindowPid = parseInt(match[0]);
-              log(`[Agent] Bot PID captured: ${botWindowPid}`);
-            } else {
-              log('[Agent] Bot started but PID not found via wmic');
-            }
-          });
-        }, 2500);
-
+        log('[Agent:Poll] Received start command');
+        await executeStart();
       } else if (command === 'stop') {
-        log('[Agent] Received stop command from brain');
-        const killCmd = botWindowPid
-          ? `taskkill /PID ${botWindowPid} /T /F`
-          : `taskkill /FI "WINDOWTITLE eq UPWORK_SCRAPER_BOT_WINDOW" /T /F`;
-        exec(killCmd, (err) => {
-          if (err) log('[Agent] Stop error:', err.message);
-          else log('[Agent] Bot stopped');
-        });
-        botWindowPid = null;
+        log('[Agent:Poll] Received stop command');
+        executeStop(null);
       }
     } catch (err) {
-      // Polling failures are non-fatal — log only unexpected errors
       if (err.code !== 'ECONNREFUSED' && err.code !== 'ETIMEDOUT' && err.code !== 'ECONNRESET') {
-        log('[Agent] Poll error:', err.message);
+        log('[Agent:Poll] Error:', err.message);
       }
     }
   }, POLL_INTERVAL);
