@@ -1,3 +1,4 @@
+const path = require('path');
 const { wait } = require('./utils');
 const { sendHeartbeat } = require('./heartbeat');
 const { getBotSettings } = require('./botSettings');
@@ -43,13 +44,17 @@ async function solveCloudflareIfPresent(win, botId, depth = 0) {
 }
 
 function runAhkClick() {
-  return new Promise((resolve, reject) => {
-    exec('click.ahk', (error) => {
+  return new Promise((resolve) => {
+    // Use absolute path so this works regardless of Electron CWD
+    // shell: true is required on Windows to execute .ahk files via file association
+    const ahkPath = path.resolve(__dirname, '..', 'click.ahk');
+    log('[AHK] Running:', ahkPath);
+    exec(`"${ahkPath}"`, { shell: true }, (error) => {
       if (error) {
-        console.error('[AHK] Error:', error.message);
-        return reject(error);
+        // AHK errors are non-fatal — the script may have run and AHK just returned non-zero
+        console.error('[AHK] exec error (non-fatal):', error.message);
       }
-      resolve();
+      resolve(); // always resolve so the scraper continues
     });
   });
 }

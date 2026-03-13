@@ -23,6 +23,7 @@ const PORT = 4001;
 app.listen(PORT, () => {
   log(`🤖 Bot agent listening at http://localhost:${PORT}`);
   registerWithDashboard();
+  startCommandPolling();
 });
 
 // ✅ Check if a PID is still alive
@@ -165,6 +166,53 @@ app.post('/stop-bot', (req, res) => {
     });
   });
 });
+
+// ── Command polling ────────────────────────────────────────────────────────────
+// Polls brain every 5s for a pending 'start' or 'stop' command queued by the
+// dashboard. This avoids the brain needing to reach EC2 port 4001 directly.
+function startCommandPolling() {
+  const POLL_INTERVAL = 5000;
+  const botId = process.env.BOT_ID;
+
+  setInterval(async () => {
+    try {
+      const res = await axios.get(
+        `${process.env.BRAIN_BASE_URL}/bots/poll-command/${botId}`,
+        { timeout: 4000 }
+      );
+      const command = res.data?.data?.command;
+
+      if (command === 'start') {
+        log('[Agent] Received start command from brain');
+        if (botWindowPid) {
+          const alive = await isPidAlive(botWindowPid);
+          if (alive) { log('[Agent] Bot already running, ignoring start'); return; }
+          botWindowPid = null;
+        }
+        spawn('cmd.exe', ['/c', 'start', '"UPWORK_SCRAPER_BOT_WINDOW"', 'cmd', '/k', BAT_PATH], {
+          detached: true, stdio: 'ignore', shell: true,
+        }).unref();
+        log('[Agent] Bot start command executed');
+
+      } else if (command === 'stop') {
+        log('[Agent] Received stop command from brain');
+        const killCmd = botWindowPid
+          ? `taskkill /PID ${botWindowPid} /T /F`
+          : `taskkill /FI "WINDOWTITLE eq UPWORK_SCRAPER_BOT_WINDOW" /T /F`;
+        exec(killCmd, (err) => {
+          if (err) log('[Agent] Stop error:', err.message);
+          else log('[Agent] Bot stopped');
+        });
+        botWindowPid = null;
+      }
+    } catch (err) {
+      // Polling failures are non-fatal — log only unexpected errors
+      if (err.code !== 'ECONNREFUSED' && err.code !== 'ETIMEDOUT' && err.code !== 'ECONNRESET') {
+        log('[Agent] Poll error:', err.message);
+      }
+    }
+  }, POLL_INTERVAL);
+}
 
 // 🔁 Register bot with dashboard (on start only);;
 async function registerWithDashboard() {

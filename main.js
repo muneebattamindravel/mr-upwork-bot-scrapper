@@ -117,6 +117,15 @@ async function startCycle() {
         await sendHeartbeat({ status: 'scraping_job', message: `Scraping job ${i + 1}`, jobUrl: job.url.split('?')[0] });
 
         const details = await scrapeJobDetail(win, i, job.url.split('?')[0]);
+
+        // Skip jobs where scraper couldn't extract meaningful content.
+        // Covers Cloudflare walls, login redirects, or pages that loaded
+        // but had no parseable title/description (saves a brain round-trip).
+        if (!details || !details.title || !details.description || details.description.length < 50) {
+          log(`[Skip] Job ${i + 1} has no extractable content — title="${details?.title}" descLen=${details?.description?.length ?? 0}`);
+          continue;
+        }
+
         jobList[i] = { ...job, ...details };
 
         log(`[✅ Scraped Job ${i + 1}]`, jobList[i]);
