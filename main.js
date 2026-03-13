@@ -51,17 +51,26 @@ async function startCycle() {
 
         log(`[Query ${qi + 1}/${queries.length}] "${query || '(all)'}"`);
 
-        const baseUrl = new URL('https://www.upwork.com/nx/search/jobs/');
-        baseUrl.searchParams.set('page', '1');
-        baseUrl.searchParams.set('per_page', maxJobs.toString());
-        baseUrl.searchParams.set('sort', 'recency');
-        baseUrl.searchParams.set('location_type', 'worldwide');
-
-        if (query) {
-          baseUrl.searchParams.set('q', query);
+        // If the entry is already a full URL (starts with http), use it directly
+        // and just override per_page + sort + location_type so our settings apply.
+        // Otherwise build from keyword as before.
+        let url;
+        if (query.startsWith('http')) {
+          const builtUrl = new URL(query);
+          builtUrl.searchParams.set('per_page', maxJobs.toString());
+          builtUrl.searchParams.set('sort', 'recency');
+          builtUrl.searchParams.set('location_type', 'worldwide');
+          url = builtUrl.toString();
+        } else {
+          const baseUrl = new URL('https://www.upwork.com/nx/search/jobs/');
+          baseUrl.searchParams.set('page', '1');
+          baseUrl.searchParams.set('per_page', maxJobs.toString());
+          baseUrl.searchParams.set('sort', 'recency');
+          baseUrl.searchParams.set('location_type', 'worldwide');
+          if (query) baseUrl.searchParams.set('q', query);
+          url = baseUrl.toString();
         }
 
-        const url = baseUrl.toString();
         log(`🔍 Feed URL: ${url}`);
 
         await sendHeartbeat({ status: 'navigating_feed', message: `Query ${qi + 1}/${queries.length}: "${query || 'all'}"` });
