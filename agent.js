@@ -211,7 +211,6 @@ async function registerWithDashboard() {
   try {
 
     const finalURL = `${process.env.BRAIN_BASE_URL}/bots/register`
-    console.log(`Final URL ${finalURL}`)
 
     const res = await axios.post(finalURL, {
       botId: process.env.BOT_ID,
