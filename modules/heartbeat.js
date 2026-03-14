@@ -7,7 +7,7 @@ let currentStatus = 'booting';
 let currentMessage = '';
 let currentJobUrl = '';
 
-async function sendHeartbeat({ status = '', message = '', jobUrl = '' }) {
+async function sendHeartbeat({ status = '', message = '', jobUrl = '', statsInc = null, statsSet = null }) {
   try {
     currentStatus = status || currentStatus;
     currentMessage = message || currentMessage;
@@ -15,13 +15,17 @@ async function sendHeartbeat({ status = '', message = '', jobUrl = '' }) {
 
     const cleanURL = currentJobUrl?.split('?')[0] || '';
 
-    await axios.post(`${process.env.BRAIN_BASE_URL}/bots/heartbeat`, {
+    const payload = {
       botId,
       status: currentStatus,
       message: currentMessage,
       jobUrl: cleanURL,
       timestamp: new Date().toISOString()
-    });
+    };
+    if (statsInc) payload.statsInc = statsInc;
+    if (statsSet)  payload.statsSet  = statsSet;
+
+    await axios.post(`${process.env.BRAIN_BASE_URL}/bots/heartbeat`, payload);
 
     log(`[📡 Heartbeat] ${currentStatus} — ${currentMessage}`);
   } catch (err) {

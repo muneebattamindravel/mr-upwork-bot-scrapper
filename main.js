@@ -47,7 +47,11 @@ async function startCycle() {
 
       log(`[🔍 Multi-Query] Running ${queries.length} search queries this cycle`);
 
-      let totalScraped = 0;
+      let totalScraped    = 0;
+      let cycleDuplicates = 0;
+      let cycleFeedFound  = 0;
+      let cycleFiltered   = 0;
+      let cycleLoadErrors = 0;
 
       for (let qi = 0; qi < queries.length; qi++) {
         const query = queries[qi].trim();
@@ -88,6 +92,7 @@ async function startCycle() {
         await sendHeartbeat({ status: 'scraping_feed', message: `Extracting jobs for "${query || 'all'}"` });
         jobList = await scrapeJobFeed(win, botId);
         log(`🟡 Query "${query}" — found ${jobList.length} jobs`);
+        cycleFeedFound += jobList.length;
 
         for (let i = 0; i < jobList.length; i++) {
 
@@ -102,6 +107,7 @@ async function startCycle() {
           const shouldVisit = await shouldVisitJob(job.url.split('?')[0]);
           if (!shouldVisit) {
             log(`[Skip] Already exists: ${job.url.split('?')[0]}`);
+            cycleDuplicates++;
             await wait(300);
             continue;
           }
@@ -114,6 +120,7 @@ async function startCycle() {
           } catch (err) {
             console.error('[❌ Load Error]', safeUrl, err.message);
             await sendHeartbeat({ status: 'job_load_failed', message: 'Failed to load job URL', jobUrl: safeUrl });
+            cycleLoadErrors++;
             continue;
           }
 
@@ -139,6 +146,7 @@ async function startCycle() {
 
           if (!details || !details.title || !details.description || details.description.length < 50) {
             log(`[Skip] No extractable content — title="${details?.title}" descLen=${details?.description?.length ?? 0}`);
+            cycleFiltered++;
             continue;
           }
 
@@ -157,7 +165,24 @@ async function startCycle() {
         log(`[Query ${qi + 1} done] Moving to next query...`);
       }
 
-      await sendHeartbeat({ status: 'cycle_complete', message: `Cycle complete — ${totalScraped} new jobs across ${queries.length} queries` });
+      await sendHeartbeat({
+        status: 'cycle_complete',
+        message: `Cycle complete — ${totalScraped} new | ${cycleDuplicates} dupes | ${cycleFeedFound} found`,
+        statsInc: {
+          cyclesCompleted:      1,
+          feedPagesLoaded:      queries.length,
+          feedJobsFound:        cycleFeedFound,
+          duplicateJobsSkipped: cycleDuplicates,
+          jobsFiltered:         cycleFiltered,
+          jobLoadErrors:        cycleLoadErrors,
+        },
+        statsSet: {
+          lastCycleJobsScraped: totalScraped,
+          lastCycleDuplicates:  cycleDuplicates,
+          lastCycleFeedFound:   cycleFeedFound,
+          lastCycleFiltered:    cycleFiltered,
+        }
+      });
 
       const minCycleDelay = settings.cycleDelayMin || 20000;
       const maxCycleDelay = settings.cycleDelayMax || 40000;

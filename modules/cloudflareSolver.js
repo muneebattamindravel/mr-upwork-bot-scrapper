@@ -9,7 +9,7 @@ const { log } = require('./utils');
 async function solveCloudflareIfPresent(win, botId, depth = 0) {
   if (depth >= 3) {
     log('[Cloudflare] Max retries reached. Moving on.');
-    await sendHeartbeat({ status: 'cloudflare_failed', message: 'Could not solve Cloudflare after 3 attempts' });
+    await sendHeartbeat({ status: 'cloudflare_failed', message: 'Could not solve Cloudflare after 3 attempts', statsInc: { cloudflareFailures: 1 } });
     return;
   }
   log('[Cloudflare] Checking...');
