@@ -37,10 +37,13 @@ async function startCycle() {
       const maxJobs = settings.perPage || 50;
 
       // IMP S7: multi-query sweep — run ALL queries in one cycle for full tech coverage.
-      // Falls back to legacy single searchQuery if searchQueries is empty.
-      const queries = (settings.searchQueries && settings.searchQueries.length > 0)
-        ? settings.searchQueries
-        : (settings.searchQuery?.trim() ? [settings.searchQuery.trim()] : ['']);
+      // customQuery=true  → keyword mode: use searchQuery text field (e.g. "game development")
+      // customQuery=false → category mode: use searchQueries array (category2_uid URLs)
+      const queries = settings.customQuery
+        ? (settings.searchQuery?.trim() ? [settings.searchQuery.trim()] : [''])
+        : (settings.searchQueries && settings.searchQueries.length > 0)
+          ? settings.searchQueries
+          : (settings.searchQuery?.trim() ? [settings.searchQuery.trim()] : ['']);
 
       log(`[🔍 Multi-Query] Running ${queries.length} search queries this cycle`);
 
