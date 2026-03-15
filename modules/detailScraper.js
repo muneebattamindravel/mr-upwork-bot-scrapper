@@ -52,8 +52,13 @@ async function dumpAndExtractJobDetails(win, index, originalUrl) {
       // Everything after "Freelance Job in " up to next " - "
       const categoryMatch = titleStr.match(/Freelance Job in ([^-]+)/i);
 
+      // Fallback: "Job Title | Upwork" format (no category available)
+      const pipeMatch = !titleMatch && titleStr.match(/^(.+?)\s*\|\s*Upwork/i);
+
       return {
-        title: titleMatch ? decodeHTMLEntities(titleMatch[1].trim()) : '',
+        title: titleMatch
+          ? decodeHTMLEntities(titleMatch[1].trim())
+          : pipeMatch ? decodeHTMLEntities(pipeMatch[1].trim()) : '',
         jobCategory: categoryMatch ? decodeHTMLEntities(categoryMatch[1].trim()) : ''
       };
     };
