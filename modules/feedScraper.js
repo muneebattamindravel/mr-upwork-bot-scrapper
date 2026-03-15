@@ -13,8 +13,8 @@ async function scrapeJobFeed(win, botId) {
 
     log(`[Feed] Scraping up to ${maxJobs} jobs from feed...`);
     jobList = await win.webContents.executeJavaScript(`
-      Array.from(document.querySelectorAll('a'))
-        .filter(a => a.href.includes('/jobs/') && a.innerText.trim().length > 10)
+      Array.from(document.querySelectorAll('a[href*="/jobs/~"]'))
+        .filter(a => a.innerText.trim().length > 10)
         .slice(0, ${maxJobs})
         .map(a => ({
           title: a.innerText.trim(),
