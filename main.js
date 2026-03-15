@@ -11,9 +11,11 @@ const { sendHeartbeat, startHeartbeatInterval } = require('./modules/heartbeat')
 const { /*isLoginPage,*/ shouldVisitJob, postJobToBackend, wait, log } = require('./modules/utils');
 const { getBotSettings } = require('./modules/botSettings');
 
-// Ensure feed-dumps directory exists at startup
-const FEED_DUMP_DIR = path.join(__dirname, 'feed-dumps');
-if (!fs.existsSync(FEED_DUMP_DIR)) fs.mkdirSync(FEED_DUMP_DIR);
+// Ensure dump directories exist at startup
+const FEED_DUMP_DIR    = path.join(__dirname, 'feed-dumps');
+const SKIPPED_DUMP_DIR = path.join(__dirname, 'skipped-dumps');
+if (!fs.existsSync(FEED_DUMP_DIR))    fs.mkdirSync(FEED_DUMP_DIR);
+if (!fs.existsSync(SKIPPED_DUMP_DIR)) fs.mkdirSync(SKIPPED_DUMP_DIR);
 
 const botId = process.env.BOT_ID || 'bot-001';
 
@@ -284,8 +286,21 @@ async function startCycle() {
           const details = await scrapeJobDetail(win, i, safeUrl);
 
           if (!details || !details.title) {
-            const reason = !details ? 'scraper returned null' : 'no title extracted';
+            const reason = !details ? 'scraper-null' : 'no-title';
             log(`[Skip] No extractable content — ${reason} — url=${safeUrl}`);
+
+            // Save HTML dump to skipped-dumps/ for post-analysis
+            try {
+              const skippedHtml = await win.webContents.executeJavaScript('document.documentElement.outerHTML');
+              const urlSlug = safeUrl.replace(/[^a-zA-Z0-9]/g, '_').slice(-60);
+              const dumpName = `skipped_${Date.now()}_${reason}_${urlSlug}.html`;
+              fs.promises.writeFile(path.join(SKIPPED_DUMP_DIR, dumpName), skippedHtml, 'utf-8')
+                .then(() => log(`[SkippedDump] Saved: ${dumpName}`))
+                .catch(e => log('[SkippedDump] Write failed:', e.message));
+            } catch (e) {
+              log('[SkippedDump] Capture failed:', e.message);
+            }
+
             await sendHeartbeat({
               status: 'job_filtered',
               message: `Filtered: ${reason}`,
