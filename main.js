@@ -20,6 +20,7 @@ const botId = process.env.BOT_ID || 'bot-001';
 let win;
 let settings;
 let jobList = [];
+let cycleCount = 0; // incremented at the start of each cycle — shown in dashboard as "Cycle #N"
 
 // ─── Phase 1: Event-driven page load ─────────────────────────────────────────
 // Waits for the page to fully load (did-finish-load event) rather than sleeping
@@ -81,9 +82,12 @@ async function startCycle() {
 
       jobList = [];
       jobList.length = 0;
+      cycleCount++;
 
       settings = await getBotSettings(botId);
-      await sendHeartbeat({ status: 'navigating_feed', message: 'Opening Upwork job feed' });
+      const queryNames = settings.searchQueryNames || [];
+
+      await sendHeartbeat({ status: 'navigating_feed', message: `Starting cycle #${cycleCount}` });
 
       const maxJobs = settings.perPage || 50;
 
@@ -106,8 +110,9 @@ async function startCycle() {
 
       for (let qi = 0; qi < queries.length; qi++) {
         const query = queries[qi].trim();
+        const queryName = queryNames[qi] || `Category ${qi + 1}`;
 
-        log(`[Query ${qi + 1}/${queries.length}] "${query || '(all)'}"`);
+        log(`[Query ${qi + 1}/${queries.length}] "${queryName}" — ${query || '(all)'}`);
 
         let url;
         if (query.startsWith('http')) {
@@ -128,7 +133,11 @@ async function startCycle() {
 
         log(`🔍 Feed URL: ${url}`);
 
-        await sendHeartbeat({ status: 'navigating_feed', message: `Query ${qi + 1}/${queries.length}: "${query || 'all'}"` });
+        await sendHeartbeat({
+          status: 'navigating_feed',
+          message: `Loading ${queryName}`,
+          progress: { queryIndex: qi + 1, queryTotal: queries.length, queryName, jobIndex: 0, jobTotal: 0 },
+        });
         await win.loadURL(url);
 
         // ── Phase 1: event-driven feed load ───────────────────────────────────
@@ -162,9 +171,13 @@ async function startCycle() {
           log('[FeedDump] Capture failed:', e.message);
         }
 
-        await sendHeartbeat({ status: 'scraping_feed', message: `Extracting jobs for "${query || 'all'}"` });
+        await sendHeartbeat({
+          status: 'scraping_feed',
+          message: `Scanning feed — ${queryName}`,
+          progress: { queryIndex: qi + 1, queryTotal: queries.length, queryName, jobIndex: 0, jobTotal: 0 },
+        });
         jobList = await scrapeJobFeed(win, botId);
-        log(`🟡 Query "${query}" — found ${jobList.length} jobs`);
+        log(`🟡 "${queryName}" — found ${jobList.length} jobs`);
         cycleFeedFound += jobList.length;
 
         for (let i = 0; i < jobList.length; i++) {
@@ -185,14 +198,24 @@ async function startCycle() {
             continue;
           }
 
-          await sendHeartbeat({ status: 'visiting_job_detail', message: job.title, jobUrl: job.url.split('?')[0] });
+          await sendHeartbeat({
+            status: 'visiting_job_detail',
+            message: job.title,
+            jobUrl: job.url.split('?')[0],
+            progress: { queryIndex: qi + 1, queryTotal: queries.length, queryName, jobIndex: i + 1, jobTotal: jobList.length },
+          });
           const safeUrl = job.url.split('?')[0];
 
           try {
             await win.loadURL(safeUrl);
           } catch (err) {
             console.error('[❌ Load Error]', safeUrl, err.message);
-            await sendHeartbeat({ status: 'job_load_failed', message: 'Failed to load job URL', jobUrl: safeUrl });
+            await sendHeartbeat({
+            status: 'job_load_failed',
+            message: 'Failed to load job page',
+            jobUrl: safeUrl,
+            progress: { queryIndex: qi + 1, queryTotal: queries.length, queryName, jobIndex: i + 1, jobTotal: jobList.length },
+          });
             cycleLoadErrors++;
             continue;
           }
@@ -215,7 +238,12 @@ async function startCycle() {
             await wait(settings.waitIfHtmlThresholdFailed || 1000);
           }
 
-          await sendHeartbeat({ status: 'scraping_job', message: `Q${qi + 1} job ${i + 1}`, jobUrl: safeUrl });
+          await sendHeartbeat({
+            status: 'scraping_job',
+            message: job.title,
+            jobUrl: safeUrl,
+            progress: { queryIndex: qi + 1, queryTotal: queries.length, queryName, jobIndex: i + 1, jobTotal: jobList.length },
+          });
 
           const details = await scrapeJobDetail(win, i, safeUrl);
 
@@ -228,7 +256,12 @@ async function startCycle() {
           jobList[i] = { ...job, ...details };
           log(`[✅ Q${qi + 1} Job ${i + 1}]`, jobList[i].title);
 
-          await sendHeartbeat({ status: 'saving_to_db', message: `Saving: ${jobList[i].title}`, jobUrl: safeUrl });
+          await sendHeartbeat({
+            status: 'saving_to_db',
+            message: `Saving: ${jobList[i].title}`,
+            jobUrl: safeUrl,
+            progress: { queryIndex: qi + 1, queryTotal: queries.length, queryName, jobIndex: i + 1, jobTotal: jobList.length },
+          });
           await postJobToBackend(jobList[i]);
           totalScraped++;
 
@@ -246,7 +279,8 @@ async function startCycle() {
 
       await sendHeartbeat({
         status: 'cycle_complete',
-        message: `Cycle complete — ${totalScraped} new | ${cycleDuplicates} dupes | ${cycleFeedFound} found`,
+        message: `Cycle #${cycleCount} done — ${totalScraped} new · ${cycleDuplicates} dupes · ${cycleFeedFound} found`,
+        progress: { queryIndex: 0, queryTotal: queries.length, queryName: '', jobIndex: 0, jobTotal: 0 },
         statsInc: {
           cyclesCompleted:      1,
           feedPagesLoaded:      queries.length,
