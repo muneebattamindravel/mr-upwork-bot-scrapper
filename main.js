@@ -54,7 +54,7 @@ async function waitForJobLinks(win, timeout = 15000) {
       // never directly after /jobs/ in slug form. Use /jobs/ + ~ filter.
       const count = await win.webContents.executeJavaScript(
         `Array.from(document.querySelectorAll('a[href*="/jobs/"]'))
-           .filter(a => a.href.includes('~') && !a.href.includes('/search/jobs/')).length`
+           .filter(a => { const p = a.href.split('?')[0]; return p.includes('~') && !p.includes('/nx/'); }).length`
       );
       if (count > 0) {
         log(`[Feed] Job links appeared in DOM (${count} found)`);

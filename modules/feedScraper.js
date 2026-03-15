@@ -15,17 +15,19 @@ async function scrapeJobFeed(win, botId) {
     jobList = await win.webContents.executeJavaScript(`
       Array.from(document.querySelectorAll('a[href*="/jobs/"]'))
         .filter(a => {
-          const href = a.href;
-          // Must contain ~ (Upwork job IDs always have it: /jobs/Title_~ID or /jobs/~ID)
-          // Excludes nav/search pages like /nx/search/jobs/?category2_uid=...
-          return href.includes('~')
-            && !href.includes('/search/jobs/')
+          // Strip query params before checking — job cards have:
+          //   href="/jobs/Title_~ID/?referrer_url_path=/nx/search/jobs/"
+          // The referrer param contains '/search/jobs/' so we MUST strip
+          // query params first or every job link gets incorrectly excluded.
+          const path = a.href.split('?')[0];
+          return path.includes('~')        // job IDs always contain ~
+            && !path.includes('/nx/')      // excludes /nx/search/jobs/ category pages
             && a.innerText.trim().length > 10;
         })
         .slice(0, ${maxJobs})
         .map(a => ({
           title: a.innerText.trim(),
-          url: a.href.startsWith('http') ? a.href : 'https://www.upwork.com' + a.getAttribute('href')
+          url: a.href.split('?')[0]        // clean URL, no referrer junk
         }));
     `);
 
