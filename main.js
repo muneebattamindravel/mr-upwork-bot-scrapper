@@ -15,9 +15,28 @@ let win;
 let settings;
 let jobList = [];
 
+// ─── Phase 1: Event-driven page load ─────────────────────────────────────────
+// Waits for the page to fully load (did-finish-load event) rather than sleeping
+// a fixed number of ms. Falls back to `timeout` ms if the event never fires.
+// Checks document.readyState first in case the page already loaded before we
+// attached the listener (can happen on fast loads / cached pages).
+async function waitForPageLoad(win, timeout = 8000) {
+  try {
+    const readyState = await win.webContents.executeJavaScript('document.readyState');
+    if (readyState === 'complete') return;
+  } catch { /* ignore — page context may not be ready yet */ }
+
+  return new Promise((resolve) => {
+    const timer = setTimeout(resolve, timeout);
+    win.webContents.once('did-finish-load', () => {
+      clearTimeout(timer);
+      resolve();
+    });
+  });
+}
+
 app.whenReady().then(async () => {
   settings = await getBotSettings(botId);
-  //win = await createBrowserWindow(session, screen);
   win = await createBrowserWindowNoLogin(session, screen);
   startHeartbeatInterval(settings.heartbeatInterval);
   log('[🧠 Bot Ready]');
@@ -37,7 +56,7 @@ async function startCycle() {
       const maxJobs = settings.perPage || 50;
 
       // IMP S7: multi-query sweep — run ALL queries in one cycle for full tech coverage.
-      // customQuery=true  → keyword mode: use searchQuery text field (e.g. "game development")
+      // customQuery=true  → keyword mode: use searchQuery text field
       // customQuery=false → category mode: use searchQueries array (category2_uid URLs)
       const queries = settings.customQuery
         ? (settings.searchQuery?.trim() ? [settings.searchQuery.trim()] : [''])
@@ -58,9 +77,6 @@ async function startCycle() {
 
         log(`[Query ${qi + 1}/${queries.length}] "${query || '(all)'}"`);
 
-        // If the entry is already a full URL (starts with http), use it directly
-        // and just override per_page + sort + location_type so our settings apply.
-        // Otherwise build from keyword as before.
         let url;
         if (query.startsWith('http')) {
           const builtUrl = new URL(query);
@@ -83,11 +99,15 @@ async function startCycle() {
         await sendHeartbeat({ status: 'navigating_feed', message: `Query ${qi + 1}/${queries.length}: "${query || 'all'}"` });
         await win.loadURL(url);
 
-        await wait(settings.feedWait || 5000);
-        await solveCloudflareIfPresent(win, botId);
+        // ── Phase 1: event-driven feed load ───────────────────────────────────
+        // Wait for the page to actually finish loading, then a short SPA hydration
+        // grace period so Upwork's React app can populate the job list in the DOM.
+        await waitForPageLoad(win, 10000);
+        const feedWait = settings.waitAfterFeedPageLoad ?? 2000;
+        if (feedWait > 0) await wait(feedWait);
+        // ──────────────────────────────────────────────────────────────────────
 
-        // [FIX S1] No-login mode — login redirect check disabled
-        // if (await isLoginPage(win)) { ... }
+        await solveCloudflareIfPresent(win, botId);
 
         await sendHeartbeat({ status: 'scraping_feed', message: `Extracting jobs for "${query || 'all'}"` });
         jobList = await scrapeJobFeed(win, botId);
@@ -98,7 +118,7 @@ async function startCycle() {
 
           const job = jobList[i];
 
-          // ✅ Skip any URL that is the feed page itself
+          // Skip any URL that is the feed page itself
           if (!job.url || job.url.split('?')[0].includes('/search/jobs/')) {
             log(`[Skip] Invalid or feed URL detected, skipping: ${job.url}`);
             continue;
@@ -124,20 +144,22 @@ async function startCycle() {
             continue;
           }
 
-          const preScrapeMin = settings.jobDetailPreScrapeDelayMin || 2000;
-          const preScrapeMax = settings.jobDetailPreScrapeDelayMax || 3000;
-
-          await Promise.race([
-            wait(preScrapeMin + Math.floor(Math.random() * (preScrapeMax - preScrapeMin))),
-            solveCloudflareIfPresent(win, botId)
-          ]);
+          // ── Phase 1: event-driven job detail load ──────────────────────────
+          // Replace fixed 2-3s random pre-scrape delay with actual page-load detection.
+          // waitForPageLoad waits for did-finish-load (or readyState=complete).
+          // The small grace period after covers any JS-rendered fields.
+          await waitForPageLoad(win, 8000);
+          await solveCloudflareIfPresent(win, botId);
+          const gracePeriod = settings.jobDetailPreScrapeDelayMin ?? 500;
+          if (gracePeriod > 0) await wait(gracePeriod);
+          // ──────────────────────────────────────────────────────────────────
 
           const htmlLengthCheck = await win.webContents.executeJavaScript('document.documentElement.outerHTML.length');
           const htmlThreshold = settings.htmlLengthThreshold || 10000;
 
           if (htmlLengthCheck < htmlThreshold) {
-            log(`[Warn] Job page may not be fully loaded. Waiting extra...`);
-            await wait(settings.waitIfHtmlThresholdFailded || 1500);
+            log(`[Warn] Job page may not be fully loaded (${htmlLengthCheck} < ${htmlThreshold}). Waiting extra...`);
+            await wait(settings.waitIfHtmlThresholdFailed || 1000);
           }
 
           await sendHeartbeat({ status: 'scraping_job', message: `Q${qi + 1} job ${i + 1}`, jobUrl: safeUrl });
@@ -157,9 +179,13 @@ async function startCycle() {
           await postJobToBackend(jobList[i]);
           totalScraped++;
 
-          const minDelay = settings.delayBetweenJobsScrapingMin || 1000;
-          const maxDelay = settings.delayBetweenJobsScrapingMax || 2000;
-          await wait(minDelay + Math.floor(Math.random() * (maxDelay - minDelay)));
+          // ── Phase 1: minimal fixed between-job delay ───────────────────────
+          // No login = no per-job rate limit at the individual job level.
+          // A small courtesy pause prevents hammering; natural page load time
+          // (handled by waitForPageLoad above) already provides the main pacing.
+          const betweenDelay = settings.delayBetweenJobsScrapingMin ?? 300;
+          if (betweenDelay > 0) await wait(betweenDelay);
+          // ──────────────────────────────────────────────────────────────────
         }
 
         log(`[Query ${qi + 1} done] Moving to next query...`);
@@ -184,13 +210,29 @@ async function startCycle() {
         }
       });
 
-      const minCycleDelay = settings.cycleDelayMin || 20000;
-      const maxCycleDelay = settings.cycleDelayMax || 40000;
+      // ── Phase 1: adaptive cycle delay ─────────────────────────────────────
+      // If the entire cycle yielded zero new jobs (all dupes), the feed hasn't
+      // refreshed — waiting the normal 10-20s before hammering it again is pointless.
+      // Instead, wait `staleCycleDelayMs` (default 5 min) to give the feed time to
+      // accumulate fresh postings.
+      // If new jobs were found, use the normal short cycleDelay so we catch the
+      // next batch quickly.
+      const newJobRatio = cycleFeedFound > 0 ? totalScraped / cycleFeedFound : 0;
+      const isStale     = totalScraped === 0 && cycleFeedFound > 0;
 
-      const delay = minCycleDelay + Math.floor(Math.random() * (maxCycleDelay - minCycleDelay));
-      log(`[Cycle] Waiting ${delay / 1000}s before next cycle...`);
+      let delay;
+      if (isStale) {
+        delay = settings.staleCycleDelayMs ?? 300000; // 5 minutes
+        log(`[Cycle] Feed stale (0/${cycleFeedFound} new) — sleeping ${(delay / 1000 / 60).toFixed(1)} min before retry`);
+      } else {
+        const minDelay = settings.cycleDelayMin ?? 10000;
+        const maxDelay = settings.cycleDelayMax ?? 20000;
+        delay = minDelay + Math.floor(Math.random() * Math.max(0, maxDelay - minDelay));
+        log(`[Cycle] ${totalScraped} new jobs — sleeping ${(delay / 1000).toFixed(1)}s before next cycle`);
+      }
+      // ──────────────────────────────────────────────────────────────────────
 
-      await sendHeartbeat({ status: 'idle', message: `Sleeping for ${delay / 1000}s before next cycle` });
+      await sendHeartbeat({ status: 'idle', message: `Sleeping for ${(delay / 1000).toFixed(1)}s before next cycle` });
       await wait(delay);
 
 
