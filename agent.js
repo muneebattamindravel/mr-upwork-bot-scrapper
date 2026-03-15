@@ -29,6 +29,7 @@ app.listen(PORT, () => {
   registerWithDashboard();
   socketRef.current = startBrainSocket();
   startCommandPolling(socketRef);
+  startAgentKeepAlive();
 });
 
 // ✅ Check if a PID is still alive
@@ -201,6 +202,28 @@ function startCommandPolling(socketRef) {
       }
     }
   }, POLL_INTERVAL);
+}
+
+// 🔁 Agent keep-alive ping — runs every 30s, independent of scraper heartbeats.
+// This lets the brain distinguish "agent up but scraper stopped" vs "EC2 down".
+function startAgentKeepAlive() {
+  const botId = process.env.BOT_ID;
+  const brainUrl = process.env.BRAIN_BASE_URL;
+  if (!botId || !brainUrl) return;
+
+  const ping = async () => {
+    try {
+      await axios.post(`${brainUrl}/bots/agent-heartbeat`, { botId }, { timeout: 4000 });
+    } catch (err) {
+      if (err.code !== 'ECONNREFUSED' && err.code !== 'ETIMEDOUT' && err.code !== 'ECONNRESET') {
+        log('[Agent:KeepAlive] Error:', err.message);
+      }
+    }
+  };
+
+  // Fire immediately on start, then every 30s
+  ping();
+  setInterval(ping, 30000);
 }
 
 // 🔁 Register bot with dashboard (on start only);;
