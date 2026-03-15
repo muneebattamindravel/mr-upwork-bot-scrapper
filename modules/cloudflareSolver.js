@@ -6,10 +6,12 @@ const { exec } = require('child_process');
 const { log } = require('./utils');
 
 // [FIX S4] Added depth param to prevent infinite recursion if Cloudflare never resolves
-async function solveCloudflareIfPresent(win, botId, depth = 0) {
+// progress: optional {queryIndex,queryTotal,queryName,jobIndex,jobTotal} — passed through
+//           to heartbeat so the dashboard progress bars stay visible during CF challenges
+async function solveCloudflareIfPresent(win, botId, depth = 0, progress = null) {
   if (depth >= 3) {
     log('[Cloudflare] Max retries reached. Moving on.');
-    await sendHeartbeat({ status: 'cloudflare_failed', message: 'Could not solve Cloudflare after 3 attempts', statsInc: { cloudflareFailures: 1 } });
+    await sendHeartbeat({ status: 'cloudflare_failed', message: 'Could not solve Cloudflare after 3 attempts', statsInc: { cloudflareFailures: 1 }, progress });
     return;
   }
   log('[Cloudflare] Checking...');
@@ -24,7 +26,7 @@ async function solveCloudflareIfPresent(win, botId, depth = 0) {
   `);
 
   if (isCloudflare) {
-    await sendHeartbeat({ status: 'cloudflare_detected', message: 'Cloudflare detected, trying to solve' });
+    await sendHeartbeat({ status: 'cloudflare_detected', message: 'Cloudflare detected, solving…', progress });
     log('[Cloudflare] Detected. Solving...');
 
     const botSettings = await getBotSettings(botId);
@@ -36,10 +38,10 @@ async function solveCloudflareIfPresent(win, botId, depth = 0) {
     await runAhkClick();
     await wait(waitAfterClick);
 
-    return await solveCloudflareIfPresent(win, botId, depth + 1);
+    return await solveCloudflareIfPresent(win, botId, depth + 1, progress);
   } else {
     log('[Cloudflare] Passed.');
-    await sendHeartbeat({ status: 'cloudflare_passed', message: 'Cloudflare Passed' });
+    await sendHeartbeat({ status: 'cloudflare_passed', message: 'Cloudflare Passed', progress });
   }
 }
 

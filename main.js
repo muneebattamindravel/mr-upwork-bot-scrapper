@@ -110,7 +110,10 @@ async function startCycle() {
 
       for (let qi = 0; qi < queries.length; qi++) {
         const query = queries[qi].trim();
-        const queryName = queryNames[qi] || `Category ${qi + 1}`;
+        // keyword mode: the query IS the name; category mode: use the parallel name array
+        const queryName = settings.customQuery
+          ? (query || 'All Jobs')
+          : (queryNames[qi] || `Category ${qi + 1}`);
 
         log(`[Query ${qi + 1}/${queries.length}] "${queryName}" — ${query || '(all)'}`);
 
@@ -151,7 +154,7 @@ async function startCycle() {
         // 4. Grace period fallback — only if waitForJobLinks timed out entirely
         //    (e.g. CF couldn't be solved, or page returned no results).
         await waitForPageLoad(win, 10000);
-        await solveCloudflareIfPresent(win, botId);
+        await solveCloudflareIfPresent(win, botId, 0, { queryIndex: qi + 1, queryTotal: queries.length, queryName, jobIndex: 0, jobTotal: 0 });
         const domReady = await waitForJobLinks(win, 15000);
         if (!domReady) {
           const feedWait = settings.waitAfterFeedPageLoad ?? 2000;
@@ -225,7 +228,7 @@ async function startCycle() {
           // waitForPageLoad waits for did-finish-load (or readyState=complete).
           // The small grace period after covers any JS-rendered fields.
           await waitForPageLoad(win, 8000);
-          await solveCloudflareIfPresent(win, botId);
+          await solveCloudflareIfPresent(win, botId, 0, { queryIndex: qi + 1, queryTotal: queries.length, queryName, jobIndex: i + 1, jobTotal: jobList.length });
           const gracePeriod = settings.jobDetailPreScrapeDelayMin ?? 500;
           if (gracePeriod > 0) await wait(gracePeriod);
           // ──────────────────────────────────────────────────────────────────
