@@ -1,3 +1,4 @@
+// v2.1.0 — agent keep-alive + separate agent/scraper status tracking
 const express = require('express');
 const cors = require('cors');
 const { spawn, exec } = require('child_process');

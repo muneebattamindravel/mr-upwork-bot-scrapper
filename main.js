@@ -1,5 +1,5 @@
 require('dotenv').config();
-
+// v2.1.0 — mkProg progress in all heartbeats including CF solver; {name,url} query objects
 const path = require('path');
 const fs   = require('fs');
 const { app, session, screen } = require('electron');
