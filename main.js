@@ -222,6 +222,14 @@ async function startCycle() {
           if (!shouldVisit) {
             log(`[Skip] Already exists: ${job.url.split('?')[0]}`);
             cycleDuplicates++;
+            // Send heartbeat so job counter advances on dashboard — without this,
+            // dupe-skipped jobs are invisible and the counter appears frozen.
+            await sendHeartbeat({
+              status: 'visiting_job_detail',
+              message: `Duplicate — skipping`,
+              jobUrl: job.url.split('?')[0],
+              progress: mkProg(i + 1, jobList.length),
+            });
             await wait(300);
             continue;
           }
