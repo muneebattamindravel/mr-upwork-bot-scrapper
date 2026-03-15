@@ -289,7 +289,9 @@ async function startCycle() {
             continue;
           }
 
-          jobList[i] = { ...job, ...details };
+          // mainCategory = top-level Upwork cluster (e.g. "Web, Mobile & Software Dev")
+          // jobCategory  = specific category parsed from the job's own detail page
+          jobList[i] = { ...job, ...details, mainCategory: queryName };
           log(`[✅ Q${qi + 1} Job ${i + 1}]`, jobList[i].title);
 
           await sendHeartbeat({

@@ -44,7 +44,7 @@ async function dumpAndExtractJobDetails(win, index, originalUrl) {
     // Title format (no-login): "Job Title - Freelance Job in Category - Budget/Hours - Upwork"
     const extractTitleAndCategory = () => {
       const match = rawHtml.match(/<title>([^<]+)<\/title>/i);
-      if (!match || match[1].trim() === 'Upwork') return { title: '', mainCategory: '' };
+      if (!match || match[1].trim() === 'Upwork') return { title: '', jobCategory: '' };
       const titleStr = match[1];
 
       // Everything before " - Freelance Job"
@@ -54,7 +54,7 @@ async function dumpAndExtractJobDetails(win, index, originalUrl) {
 
       return {
         title: titleMatch ? decodeHTMLEntities(titleMatch[1].trim()) : '',
-        mainCategory: categoryMatch ? decodeHTMLEntities(categoryMatch[1].trim()) : ''
+        jobCategory: categoryMatch ? decodeHTMLEntities(categoryMatch[1].trim()) : ''
       };
     };
 
@@ -310,14 +310,14 @@ async function dumpAndExtractJobDetails(win, index, originalUrl) {
       return { minRange: 0, maxRange: 0 };
     }
 
-    const { title, mainCategory } = extractTitleAndCategory();
+    const { title, jobCategory } = extractTitleAndCategory();
     const { minRange, maxRange } = extractBudgetRange();
 
     return {
       title:                   title || '',
       url:                     originalUrl.split('?')[0],
       description:             extractDescription() || '',
-      mainCategory:            mainCategory || '',
+      jobCategory:             jobCategory || '',
       experienceLevel:         extractExperienceLevel() || '',
       projectType:             extractProjectType() || '',
       postedDate:              calculatePostedDate() ?? null,
