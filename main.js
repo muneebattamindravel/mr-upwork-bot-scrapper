@@ -35,6 +35,29 @@ async function waitForPageLoad(win, timeout = 8000) {
   });
 }
 
+// ─── Wait for Upwork SPA to render job cards ─────────────────────────────────
+// did-finish-load fires when the JS bundle loads, but Upwork's React app then
+// makes an API call to fetch jobs and renders the cards asynchronously.
+// This polls the DOM every 500ms until actual job links (/jobs/~...) appear,
+// or gives up after `timeout` ms. Fixes missed jobs due to SPA hydration lag.
+async function waitForJobLinks(win, timeout = 15000) {
+  const start = Date.now();
+  while (Date.now() - start < timeout) {
+    try {
+      const count = await win.webContents.executeJavaScript(
+        `document.querySelectorAll('a[href*="/jobs/~"]').length`
+      );
+      if (count > 0) {
+        log(`[Feed] Job links appeared in DOM (${count} found)`);
+        return count;
+      }
+    } catch { /* page context not ready yet */ }
+    await wait(500);
+  }
+  log(`[Feed] Timeout waiting for job links — scraping whatever is in DOM`);
+  return 0;
+}
+
 app.whenReady().then(async () => {
   settings = await getBotSettings(botId);
   win = await createBrowserWindowNoLogin(session, screen);
@@ -100,11 +123,17 @@ async function startCycle() {
         await win.loadURL(url);
 
         // ── Phase 1: event-driven feed load ───────────────────────────────────
-        // Wait for the page to actually finish loading, then a short SPA hydration
-        // grace period so Upwork's React app can populate the job list in the DOM.
+        // Step 1: wait for the JS bundle to finish loading.
+        // Step 2: poll the DOM until Upwork's React app has rendered actual job
+        //         cards (/jobs/~ links) — this covers the async API call Upwork
+        //         makes after the bundle loads. Falls back to `feedWait` grace
+        //         period only if the poll times out (e.g. Cloudflare page).
         await waitForPageLoad(win, 10000);
-        const feedWait = settings.waitAfterFeedPageLoad ?? 2000;
-        if (feedWait > 0) await wait(feedWait);
+        const domReady = await waitForJobLinks(win, 15000);
+        if (!domReady) {
+          const feedWait = settings.waitAfterFeedPageLoad ?? 2000;
+          if (feedWait > 0) await wait(feedWait);
+        }
         // ──────────────────────────────────────────────────────────────────────
 
         await solveCloudflareIfPresent(win, botId);
