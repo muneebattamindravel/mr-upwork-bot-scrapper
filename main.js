@@ -44,8 +44,11 @@ async function waitForJobLinks(win, timeout = 15000) {
   const start = Date.now();
   while (Date.now() - start < timeout) {
     try {
+      // Upwork job URLs: /jobs/Title_~ID or /jobs/~ID — always contain ~ but
+      // never directly after /jobs/ in slug form. Use /jobs/ + ~ filter.
       const count = await win.webContents.executeJavaScript(
-        `document.querySelectorAll('a[href*="/jobs/~"]').length`
+        `Array.from(document.querySelectorAll('a[href*="/jobs/"]'))
+           .filter(a => a.href.includes('~') && !a.href.includes('/search/jobs/')).length`
       );
       if (count > 0) {
         log(`[Feed] Job links appeared in DOM (${count} found)`);

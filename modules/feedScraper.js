@@ -13,8 +13,15 @@ async function scrapeJobFeed(win, botId) {
 
     log(`[Feed] Scraping up to ${maxJobs} jobs from feed...`);
     jobList = await win.webContents.executeJavaScript(`
-      Array.from(document.querySelectorAll('a[href*="/jobs/~"]'))
-        .filter(a => a.innerText.trim().length > 10)
+      Array.from(document.querySelectorAll('a[href*="/jobs/"]'))
+        .filter(a => {
+          const href = a.href;
+          // Must contain ~ (Upwork job IDs always have it: /jobs/Title_~ID or /jobs/~ID)
+          // Excludes nav/search pages like /nx/search/jobs/?category2_uid=...
+          return href.includes('~')
+            && !href.includes('/search/jobs/')
+            && a.innerText.trim().length > 10;
+        })
         .slice(0, ${maxJobs})
         .map(a => ({
           title: a.innerText.trim(),
