@@ -1,5 +1,7 @@
 require('dotenv').config();
 
+const path = require('path');
+const fs   = require('fs');
 const { app, session, screen } = require('electron');
 const { createBrowserWindow, createBrowserWindowNoLogin } = require('./modules/browser');
 const { solveCloudflareIfPresent } = require('./modules/cloudflareSolver');
@@ -8,6 +10,10 @@ const { scrapeJobDetail } = require('./modules/detailScraper');
 const { sendHeartbeat, startHeartbeatInterval } = require('./modules/heartbeat');
 const { /*isLoginPage,*/ shouldVisitJob, postJobToBackend, wait, log } = require('./modules/utils');
 const { getBotSettings } = require('./modules/botSettings');
+
+// Ensure feed-dumps directory exists at startup
+const FEED_DUMP_DIR = path.join(__dirname, 'feed-dumps');
+if (!fs.existsSync(FEED_DUMP_DIR)) fs.mkdirSync(FEED_DUMP_DIR);
 
 const botId = process.env.BOT_ID || 'bot-001';
 
@@ -143,6 +149,18 @@ async function startCycle() {
           if (feedWait > 0) await wait(feedWait);
         }
         // ──────────────────────────────────────────────────────────────────────
+
+        // Save feed page HTML dump for debugging (non-blocking).
+        // Files saved to: mr-upwork-bot-scrapper/feed-dumps/feed_dump_qi<N>_<timestamp>.html
+        try {
+          const feedHtml = await win.webContents.executeJavaScript('document.documentElement.outerHTML');
+          const dumpName = `feed_dump_q${qi + 1}_${Date.now()}.html`;
+          fs.promises.writeFile(path.join(FEED_DUMP_DIR, dumpName), feedHtml, 'utf-8')
+            .then(() => log(`[FeedDump] Saved: ${dumpName}`))
+            .catch(e => log('[FeedDump] Write failed:', e.message));
+        } catch (e) {
+          log('[FeedDump] Capture failed:', e.message);
+        }
 
         await sendHeartbeat({ status: 'scraping_feed', message: `Extracting jobs for "${query || 'all'}"` });
         jobList = await scrapeJobFeed(win, botId);
