@@ -7,7 +7,7 @@ let currentStatus = 'booting';
 let currentMessage = '';
 let currentJobUrl = '';
 
-async function sendHeartbeat({ status = '', message = '', jobUrl = '', statsInc = null, statsSet = null }) {
+async function sendHeartbeat({ status = '', message = '', jobUrl = '', statsInc = null, statsSet = null, progress = null }) {
   try {
     currentStatus = status || currentStatus;
     currentMessage = message || currentMessage;
@@ -22,8 +22,9 @@ async function sendHeartbeat({ status = '', message = '', jobUrl = '', statsInc 
       jobUrl: cleanURL,
       timestamp: new Date().toISOString()
     };
-    if (statsInc) payload.statsInc = statsInc;
+    if (statsInc)  payload.statsInc  = statsInc;
     if (statsSet)  payload.statsSet  = statsSet;
+    if (progress)  payload.progress  = progress;
 
     await axios.post(`${process.env.BRAIN_BASE_URL}/bots/heartbeat`, payload);
 
