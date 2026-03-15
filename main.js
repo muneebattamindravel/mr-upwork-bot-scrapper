@@ -123,20 +123,23 @@ async function startCycle() {
         await win.loadURL(url);
 
         // ── Phase 1: event-driven feed load ───────────────────────────────────
-        // Step 1: wait for the JS bundle to finish loading.
-        // Step 2: poll the DOM until Upwork's React app has rendered actual job
-        //         cards (/jobs/~ links) — this covers the async API call Upwork
-        //         makes after the bundle loads. Falls back to `feedWait` grace
-        //         period only if the poll times out (e.g. Cloudflare page).
+        // Order matters:
+        // 1. waitForPageLoad — JS bundle finished loading
+        // 2. solveCloudflareIfPresent — if CF challenge page, solve it first.
+        //    CF solver waits cloudflareWaitAfterClick (5s) then re-checks.
+        //    After it returns, the real Upwork page is loading.
+        // 3. waitForJobLinks — poll until React renders job cards. This covers
+        //    both normal load and post-CF load in one step.
+        // 4. Grace period fallback — only if waitForJobLinks timed out entirely
+        //    (e.g. CF couldn't be solved, or page returned no results).
         await waitForPageLoad(win, 10000);
+        await solveCloudflareIfPresent(win, botId);
         const domReady = await waitForJobLinks(win, 15000);
         if (!domReady) {
           const feedWait = settings.waitAfterFeedPageLoad ?? 2000;
           if (feedWait > 0) await wait(feedWait);
         }
         // ──────────────────────────────────────────────────────────────────────
-
-        await solveCloudflareIfPresent(win, botId);
 
         await sendHeartbeat({ status: 'scraping_feed', message: `Extracting jobs for "${query || 'all'}"` });
         jobList = await scrapeJobFeed(win, botId);
@@ -246,8 +249,7 @@ async function startCycle() {
       // accumulate fresh postings.
       // If new jobs were found, use the normal short cycleDelay so we catch the
       // next batch quickly.
-      const newJobRatio = cycleFeedFound > 0 ? totalScraped / cycleFeedFound : 0;
-      const isStale     = totalScraped === 0 && cycleFeedFound > 0;
+      const isStale = totalScraped === 0 && cycleFeedFound > 0;
 
       let delay;
       if (isStale) {
