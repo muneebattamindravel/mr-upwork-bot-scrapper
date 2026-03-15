@@ -117,6 +117,22 @@ async function startCycle() {
 
         log(`[Query ${qi + 1}/${queries.length}] "${queryName}" — ${query || '(all)'}`);
 
+        // ── Progress helper — builds the full progress payload including live running totals.
+        // Defined inside the qi loop so queryName is always the current category.
+        // The counter variables (cycleFeedFound etc.) are captured by reference, so calling
+        // mkProg() always reflects their current values at the time of the call.
+        const mkProg = (jIdx, jTotal) => ({
+          queryIndex: qi + 1,
+          queryTotal: queries.length,
+          queryName,
+          jobIndex:  jIdx,
+          jobTotal:  jTotal,
+          found:     cycleFeedFound,
+          newJobs:   totalScraped,
+          dupes:     cycleDuplicates,
+          filtered:  cycleFiltered,
+        });
+
         let url;
         if (query.startsWith('http')) {
           const builtUrl = new URL(query);
@@ -139,7 +155,7 @@ async function startCycle() {
         await sendHeartbeat({
           status: 'navigating_feed',
           message: `Loading ${queryName}`,
-          progress: { queryIndex: qi + 1, queryTotal: queries.length, queryName, jobIndex: 0, jobTotal: 0 },
+          progress: mkProg(0, 0),
         });
         await win.loadURL(url);
 
@@ -154,7 +170,7 @@ async function startCycle() {
         // 4. Grace period fallback — only if waitForJobLinks timed out entirely
         //    (e.g. CF couldn't be solved, or page returned no results).
         await waitForPageLoad(win, 10000);
-        await solveCloudflareIfPresent(win, botId, 0, { queryIndex: qi + 1, queryTotal: queries.length, queryName, jobIndex: 0, jobTotal: 0 });
+        await solveCloudflareIfPresent(win, botId, 0, mkProg(0, 0));
         const domReady = await waitForJobLinks(win, 15000);
         if (!domReady) {
           const feedWait = settings.waitAfterFeedPageLoad ?? 2000;
@@ -177,7 +193,7 @@ async function startCycle() {
         await sendHeartbeat({
           status: 'scraping_feed',
           message: `Scanning feed — ${queryName}`,
-          progress: { queryIndex: qi + 1, queryTotal: queries.length, queryName, jobIndex: 0, jobTotal: 0 },
+          progress: mkProg(0, 0),
         });
         jobList = await scrapeJobFeed(win, botId);
         log(`🟡 "${queryName}" — found ${jobList.length} jobs`);
@@ -205,7 +221,7 @@ async function startCycle() {
             status: 'visiting_job_detail',
             message: job.title,
             jobUrl: job.url.split('?')[0],
-            progress: { queryIndex: qi + 1, queryTotal: queries.length, queryName, jobIndex: i + 1, jobTotal: jobList.length },
+            progress: mkProg(i + 1, jobList.length),
           });
           const safeUrl = job.url.split('?')[0];
 
@@ -214,11 +230,11 @@ async function startCycle() {
           } catch (err) {
             console.error('[❌ Load Error]', safeUrl, err.message);
             await sendHeartbeat({
-            status: 'job_load_failed',
-            message: 'Failed to load job page',
-            jobUrl: safeUrl,
-            progress: { queryIndex: qi + 1, queryTotal: queries.length, queryName, jobIndex: i + 1, jobTotal: jobList.length },
-          });
+              status: 'job_load_failed',
+              message: 'Failed to load job page',
+              jobUrl: safeUrl,
+              progress: mkProg(i + 1, jobList.length),
+            });
             cycleLoadErrors++;
             continue;
           }
@@ -228,7 +244,7 @@ async function startCycle() {
           // waitForPageLoad waits for did-finish-load (or readyState=complete).
           // The small grace period after covers any JS-rendered fields.
           await waitForPageLoad(win, 8000);
-          await solveCloudflareIfPresent(win, botId, 0, { queryIndex: qi + 1, queryTotal: queries.length, queryName, jobIndex: i + 1, jobTotal: jobList.length });
+          await solveCloudflareIfPresent(win, botId, 0, mkProg(i + 1, jobList.length));
           const gracePeriod = settings.jobDetailPreScrapeDelayMin ?? 500;
           if (gracePeriod > 0) await wait(gracePeriod);
           // ──────────────────────────────────────────────────────────────────
@@ -245,7 +261,7 @@ async function startCycle() {
             status: 'scraping_job',
             message: job.title,
             jobUrl: safeUrl,
-            progress: { queryIndex: qi + 1, queryTotal: queries.length, queryName, jobIndex: i + 1, jobTotal: jobList.length },
+            progress: mkProg(i + 1, jobList.length),
           });
 
           const details = await scrapeJobDetail(win, i, safeUrl);
@@ -263,7 +279,7 @@ async function startCycle() {
             status: 'saving_to_db',
             message: `Saving: ${jobList[i].title}`,
             jobUrl: safeUrl,
-            progress: { queryIndex: qi + 1, queryTotal: queries.length, queryName, jobIndex: i + 1, jobTotal: jobList.length },
+            progress: mkProg(i + 1, jobList.length),
           });
           await postJobToBackend(jobList[i]);
           totalScraped++;
