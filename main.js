@@ -85,20 +85,29 @@ async function startCycle() {
       cycleCount++;
 
       settings = await getBotSettings(botId);
-      const queryNames = settings.searchQueryNames || [];
 
       await sendHeartbeat({ status: 'navigating_feed', message: `Starting cycle #${cycleCount}` });
 
       const maxJobs = settings.perPage || 50;
 
       // IMP S7: multi-query sweep — run ALL queries in one cycle for full tech coverage.
-      // customQuery=true  → keyword mode: use searchQuery text field
-      // customQuery=false → category mode: use searchQueries array (category2_uid URLs)
-      const queries = settings.customQuery
-        ? (settings.searchQuery?.trim() ? [settings.searchQuery.trim()] : [''])
-        : (settings.searchQueries && settings.searchQueries.length > 0)
+      // settings.searchQueries entries are either {name, url} objects (new) or plain URL strings (old).
+      // Keyword mode (customQuery=true) builds a single synthetic {name, url} from searchQuery text.
+      let queries; // always an array of {name: String, url: String}
+      if (settings.customQuery) {
+        const q = settings.searchQuery?.trim() || '';
+        queries = [{ name: q || 'All Jobs', url: q }];
+      } else {
+        const raw = (settings.searchQueries && settings.searchQueries.length > 0)
           ? settings.searchQueries
-          : (settings.searchQuery?.trim() ? [settings.searchQuery.trim()] : ['']);
+          : (settings.searchQuery?.trim() ? [settings.searchQuery.trim()] : []);
+        const legacyNames = settings.searchQueryNames || [];
+        queries = raw.map((q, i) =>
+          typeof q === 'string'
+            ? { name: legacyNames[i] || `Category ${i + 1}`, url: q }
+            : { name: q.name || `Category ${i + 1}`, url: q.url || '' }
+        );
+      }
 
       log(`[🔍 Multi-Query] Running ${queries.length} search queries this cycle`);
 
@@ -107,13 +116,13 @@ async function startCycle() {
       let cycleFeedFound  = 0;
       let cycleFiltered   = 0;
       let cycleLoadErrors = 0;
+      let lastQueryName   = '';   // persisted to cycle_complete so dashboard shows last category name
 
       for (let qi = 0; qi < queries.length; qi++) {
-        const query = queries[qi].trim();
-        // keyword mode: the query IS the name; category mode: use the parallel name array
-        const queryName = settings.customQuery
-          ? (query || 'All Jobs')
-          : (queryNames[qi] || `Category ${qi + 1}`);
+        const queryItem = queries[qi];             // {name, url}
+        const queryName = queryItem.name || `Category ${qi + 1}`;
+        const query     = queryItem.url  || '';
+        lastQueryName   = queryName;              // track so cycle_complete can reference it
 
         log(`[Query ${qi + 1}/${queries.length}] "${queryName}" — ${query || '(all)'}`);
 
@@ -299,7 +308,8 @@ async function startCycle() {
       await sendHeartbeat({
         status: 'cycle_complete',
         message: `Cycle #${cycleCount} done — ${totalScraped} new · ${cycleDuplicates} dupes · ${cycleFeedFound} found`,
-        progress: { queryIndex: 0, queryTotal: queries.length, queryName: '', jobIndex: 0, jobTotal: 0 },
+        // Keep lastQueryName so dashboard still shows category name during idle/between cycles
+        progress: { queryIndex: queries.length, queryTotal: queries.length, queryName: lastQueryName, jobIndex: 0, jobTotal: 0, found: cycleFeedFound, newJobs: totalScraped, dupes: cycleDuplicates, filtered: cycleFiltered },
         statsInc: {
           cyclesCompleted:      1,
           feedPagesLoaded:      queries.length,
