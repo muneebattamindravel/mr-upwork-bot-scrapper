@@ -41,15 +41,17 @@ async function shouldVisitJob(url) {
 
     return shouldVisit;
   } catch (err) {
-    console.error(`[shouldVisitJob] Error checking job existence: ${err.message}`);
-    return false;
+    // Network error or brain API down — default to TRUE (visit the job) so we
+    // never silently skip a job due to a transient failure. Worst case: a dupe
+    // gets sent to ingest, which handles dedup via upsert anyway.
+    console.error(`[shouldVisitJob] Error — defaulting to visit: ${err.message}`);
+    return true;
   }
 }
 
 
-async function postJobToBackend(jobData) {
+async function postJobToBackend(jobData, retries = 1) {
   try {
-
     jobData.url = jobData.url.split('?')[0];
     jobData.botId = process.env.BOT_ID;
 
@@ -58,7 +60,13 @@ async function postJobToBackend(jobData) {
     const insertedCount = response.data?.inserted || 1;
     log(`✅ Job posted: ${insertedCount} job(s)`);
   } catch (err) {
-    console.error('❌ Failed to post job:', err.message);
+    console.error(`❌ Failed to post job (${retries} retries left): ${err.message}`);
+    if (retries > 0) {
+      await new Promise(r => setTimeout(r, 2000));
+      return postJobToBackend(jobData, retries - 1);
+    }
+    // Re-throw after all retries exhausted so main.js cycle error handler is aware
+    throw err;
   }
 }
 

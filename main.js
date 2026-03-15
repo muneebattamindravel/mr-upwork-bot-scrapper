@@ -284,7 +284,17 @@ async function startCycle() {
           const details = await scrapeJobDetail(win, i, safeUrl);
 
           if (!details || !details.title || !details.description || details.description.length < 50) {
-            log(`[Skip] No extractable content — title="${details?.title}" descLen=${details?.description?.length ?? 0}`);
+            const reason = !details ? 'scraper returned null' :
+              !details.title ? 'no title extracted' :
+              !details.description ? 'no description extracted' :
+              `description too short (${details.description.length} chars)`;
+            log(`[Skip] No extractable content — ${reason} — url=${safeUrl}`);
+            await sendHeartbeat({
+              status: 'job_filtered',
+              message: `Filtered: ${reason}`,
+              jobUrl: safeUrl,
+              progress: mkProg(i + 1, jobList.length),
+            });
             cycleFiltered++;
             continue;
           }

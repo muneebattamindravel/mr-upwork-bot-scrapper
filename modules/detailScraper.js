@@ -59,16 +59,36 @@ async function dumpAndExtractJobDetails(win, index, originalUrl) {
     };
 
     // ─── DESCRIPTION ─────────────────────────────────────────────────────────
-    // Primary: data-test="Description" section with multiline-text class
-    // Fallback: Summary marker approach (old logged-in format)
+    // Primary v2: text-extraction from the entire data-test="Description" section.
+    // This replaces the old single-<p> regex which silently missed jobs whose
+    // description started with a short header paragraph (e.g. "<p><strong>Skills:</strong></p>")
+    // causing the < 50-char guard in main.js to skip the whole job.
+    // Fallback A: multiline-text regex (first <p> only — kept for structure detection)
+    // Fallback B: Summary marker (old logged-in format)
     const extractDescription = () => {
-      // Primary: no-login page format
+      // Primary v2: find the Description section, grab up to 12KB of text content
+      const sectionIdx = rawHtml.indexOf('data-test="Description"');
+      if (sectionIdx !== -1) {
+        const tagClose = rawHtml.indexOf('>', sectionIdx);
+        if (tagClose !== -1) {
+          const slice = rawHtml.substring(tagClose + 1, tagClose + 12000);
+          const text = slice
+            .replace(/<script[\s\S]*?<\/script>/gi, '')
+            .replace(/<style[\s\S]*?<\/style>/gi, '')
+            .replace(/<[^>]+>/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+          if (text.length > 50) return text;
+        }
+      }
+
+      // Fallback A: first multiline-text <p> (old primary — catches edge cases)
       const descMatch = rawHtml.match(/data-test="Description"[\s\S]*?<p[^>]*class="[^"]*multiline-text[^"]*"[^>]*>([\s\S]*?)<\/p>/i);
       if (descMatch) {
         return descMatch[1].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
       }
 
-      // Fallback: Summary keyword approach (logged-in page format)
+      // Fallback B: Summary keyword approach (logged-in page format)
       const summaryIndex = rawHtml.indexOf('Summary');
       if (summaryIndex === -1) return '';
       const nextGtIndex = rawHtml.indexOf('>', summaryIndex);
