@@ -283,11 +283,8 @@ async function startCycle() {
 
           const details = await scrapeJobDetail(win, i, safeUrl);
 
-          if (!details || !details.title || !details.description || details.description.length < 50) {
-            const reason = !details ? 'scraper returned null' :
-              !details.title ? 'no title extracted' :
-              !details.description ? 'no description extracted' :
-              `description too short (${details.description.length} chars)`;
+          if (!details || !details.title) {
+            const reason = !details ? 'scraper returned null' : 'no title extracted';
             log(`[Skip] No extractable content — ${reason} — url=${safeUrl}`);
             await sendHeartbeat({
               status: 'job_filtered',
