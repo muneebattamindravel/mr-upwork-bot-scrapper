@@ -206,8 +206,58 @@ async function startCycle() {
           message: `Scanning feed — ${queryName}`,
           progress: mkProg(0, 0),
         });
+
+        // ── Paginated feed scraping ─────────────────────────────────────────────
+        // Upwork caps unauthenticated feed at 10 jobs per page regardless of
+        // per_page param. To honour maxJobs (e.g. 30), we load pages 2, 3, …
+        // using paging_offset until we have enough unique links or run out of results.
+        const UPWORK_PAGE_CAP = 10; // server-side cap for unauthenticated users
+        const pagesNeeded = Math.ceil(maxJobs / UPWORK_PAGE_CAP);
+
         jobList = await scrapeJobFeed(win, botId);
-        log(`🟡 "${queryName}" — found ${jobList.length} jobs`);
+        log(`🟡 "${queryName}" — page 1: ${jobList.length} jobs`);
+
+        for (let pg = 2; pg <= pagesNeeded && jobList.length < maxJobs; pg++) {
+          const pageUrl = new URL(url);
+          pageUrl.searchParams.set('paging_offset', String((pg - 1) * UPWORK_PAGE_CAP));
+          pageUrl.searchParams.set('per_page', '10');
+
+          await sendHeartbeat({
+            status: 'scraping_feed',
+            message: `Scanning feed — ${queryName} (page ${pg}/${pagesNeeded})`,
+            progress: mkProg(0, 0),
+          });
+
+          await win.loadURL(pageUrl.toString());
+          await waitForPageLoad(win, 10000);
+          await solveCloudflareIfPresent(win, botId, 0, mkProg(0, 0));
+          const pgReady = await waitForJobLinks(win, 15000);
+          if (!pgReady) {
+            log(`[Feed] Page ${pg} didn't load — stopping pagination`);
+            break;
+          }
+
+          // Extract links directly (same logic as feedScraper.js)
+          const existingUrls = new Set(jobList.map(j => j.url));
+          const pageJobs = await win.webContents.executeJavaScript(`
+            Array.from(document.querySelectorAll('a[href*="/jobs/"]'))
+              .filter(a => {
+                const p = a.href.split('?')[0];
+                return p.includes('~') && !p.includes('/nx/') && a.innerText.trim().length > 10;
+              })
+              .map(a => ({ title: a.innerText.trim(), url: a.href.split('?')[0] }));
+          `);
+
+          const newLinks = (pageJobs || []).filter(j => !existingUrls.has(j.url));
+          log(`[Feed] "${queryName}" page ${pg}: ${pageJobs.length} found, ${newLinks.length} new`);
+          if (newLinks.length === 0) break; // end of results
+          jobList = [...jobList, ...newLinks];
+        }
+
+        jobList = jobList.slice(0, maxJobs); // final cap
+        log(`🟡 "${queryName}" — total after pagination: ${jobList.length} jobs`);
+        // ──────────────────────────────────────────────────────────────────────
+
         cycleFeedFound += jobList.length;
 
         for (let i = 0; i < jobList.length; i++) {
