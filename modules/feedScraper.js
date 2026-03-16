@@ -7,9 +7,9 @@ let jobList = [];
 async function scrapeJobFeed(win, botId) {
   try {
     const settings = await getBotSettings(botId);
-    // Use perPage (how many jobs Upwork returns per feed page) — matches the
-    // per_page URL param set in main.js. maxJobsPerCycle is a legacy fallback.
-    const maxJobs = settings.perPage || settings.maxJobsPerCycle || 50;
+    // Use perPage — matches the per_page URL param set in main.js.
+    // maxJobsPerCycle was a legacy field; old DB documents may still have it but it is ignored.
+    const maxJobs = settings.perPage || 50;
 
     log(`[Feed] Scraping up to ${maxJobs} jobs from feed...`);
     jobList = await win.webContents.executeJavaScript(`
