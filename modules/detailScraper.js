@@ -71,19 +71,44 @@ async function dumpAndExtractJobDetails(win, index, originalUrl) {
     // Fallback A: multiline-text regex (first <p> only — kept for structure detection)
     // Fallback B: Summary marker (old logged-in format)
     const extractDescription = () => {
-      // Primary v2: find the Description section, grab up to 12KB of text content
+      // Primary v3: find data-test="Description" container, walk div-depth to its closing </div>
+      // so we ONLY extract the description text — nothing from adjacent sections
+      // (Activity on this job, Skills, Project Type, etc. are siblings, not children).
       const sectionIdx = rawHtml.indexOf('data-test="Description"');
       if (sectionIdx !== -1) {
         const tagClose = rawHtml.indexOf('>', sectionIdx);
         if (tagClose !== -1) {
-          const slice = rawHtml.substring(tagClose + 1, tagClose + 12000);
-          const text = slice
-            .replace(/<script[\s\S]*?<\/script>/gi, '')
-            .replace(/<style[\s\S]*?<\/style>/gi, '')
-            .replace(/<[^>]+>/g, ' ')
-            .replace(/\s+/g, ' ')
-            .trim();
-          if (text.length > 50) return text;
+          // Walk forward tracking nested <div> opens/closes to find the matching </div>
+          let depth = 1;
+          let pos   = tagClose + 1;
+          const MAX_SCAN = 20000; // safety cap — bail if no closing tag found within 20KB
+          const scanEnd  = Math.min(pos + MAX_SCAN, rawHtml.length);
+
+          while (pos < scanEnd && depth > 0) {
+            const nextOpen  = rawHtml.indexOf('<div', pos);
+            const nextClose = rawHtml.indexOf('</div>', pos);
+            if (nextClose === -1) break; // malformed HTML
+            if (nextOpen !== -1 && nextOpen < nextClose) {
+              // Another <div opens before the next </div closes — go deeper
+              depth++;
+              pos = nextOpen + 4;
+            } else {
+              depth--;
+              if (depth === 0) {
+                // Found the closing </div> of the Description container
+                const inner = rawHtml.substring(tagClose + 1, nextClose);
+                const text  = inner
+                  .replace(/<script[\s\S]*?<\/script>/gi, '')
+                  .replace(/<style[\s\S]*?<\/style>/gi, '')
+                  .replace(/<[^>]+>/g, ' ')
+                  .replace(/\s+/g, ' ')
+                  .trim();
+                if (text.length > 30) return text;
+                break;
+              }
+              pos = nextClose + 6; // move past </div>
+            }
+          }
         }
       }
 
