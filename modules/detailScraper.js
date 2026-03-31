@@ -161,9 +161,9 @@ async function dumpAndExtractJobDetails(win, index, originalUrl) {
 
     // ─── POSTED DATE ─────────────────────────────────────────────────────────
     const extractPostedAgoText = () => {
-      // 1. Relative numeric: "3 hours ago", "2 days ago", etc.
-      let match = rawHtml.match(/(\d+)\s+(second|minute|hour|day|week|month|year)s?\s+ago/i);
-      if (match) return match[0].trim();
+      // 1. Relative numeric anchored near "Posted" keyword: "3 hours ago", "2 days ago", etc.
+      let match = rawHtml.match(/Posted[\s\S]{0,150}?(\d+\s+(?:second|minute|hour|day|week|month|year)s?\s+ago)/i);
+      if (match) return match[1].trim();
 
       // 2. "last week" / "last month" inside posted-on-line span
       match = rawHtml.match(/Posted\s*<span[^>]*>(last\s+\w+)<\/span>/i);
