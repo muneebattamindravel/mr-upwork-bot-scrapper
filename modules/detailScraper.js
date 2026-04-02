@@ -33,10 +33,9 @@ async function dumpAndExtractJobDetails(win, index, originalUrl) {
   try {
 
     // [FIX S3] Get HTML directly from browser — no need to read back from disk
-    // Still saving to disk for debugging purposes
     const rawHtml = await win.webContents.executeJavaScript('document.documentElement.outerHTML');
-    const filePath = path.join(__dirname, '..', 'html-dumps', `job_detail_dump_${index}.html`);
-    fs.promises.writeFile(filePath, rawHtml, 'utf-8').catch(e => log('[detailScraper] Dump write failed:', e.message));
+    // const filePath = path.join(__dirname, '..', 'html-dumps', `job_detail_dump_${index}.html`);
+    // fs.promises.writeFile(filePath, rawHtml, 'utf-8').catch(e => log('[detailScraper] Dump write failed:', e.message));
     // const buffer = fs.readFileSync(filePath);
     // const rawHtml = new TextDecoder('utf-8').decode(buffer);
 
