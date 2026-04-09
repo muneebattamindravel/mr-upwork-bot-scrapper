@@ -44,6 +44,33 @@ async function waitForPageLoad(win, timeout = 8000) {
   });
 }
 
+// ─── Wait for Upwork SPA to render job description ───────────────────────────
+// For detail pages: did-finish-load fires when the JS bundle loads, but Vue.js
+// then makes an API call to fetch the job and renders description asynchronously.
+// Poll every 400ms until data-test="Description" has visible text (> 20 chars),
+// or give up after `timeout` ms. This prevents blank descriptions from pages
+// captured mid-render (was the #1 cause of empty description field in DB).
+async function waitForJobDescription(win, timeout = 12000) {
+  const start = Date.now();
+  while (Date.now() - start < timeout) {
+    try {
+      const len = await win.webContents.executeJavaScript(`
+        (() => {
+          const el = document.querySelector('[data-test="Description"]');
+          return el ? (el.innerText || '').trim().length : 0;
+        })()
+      `);
+      if (len > 20) {
+        log(`[Detail] Description rendered in DOM (${len} chars)`);
+        return true;
+      }
+    } catch { /* page context not ready yet */ }
+    await wait(400);
+  }
+  log(`[Detail] Timeout waiting for description — scraping whatever is in DOM`);
+  return false;
+}
+
 // ─── Wait for Upwork SPA to render job cards ─────────────────────────────────
 // did-finish-load fires when the JS bundle loads, but Upwork's React app then
 // makes an API call to fetch jobs and renders the cards asynchronously.
@@ -309,13 +336,16 @@ async function startCycle() {
           }
 
           // ── Phase 1: event-driven job detail load ──────────────────────────
-          // Replace fixed 2-3s random pre-scrape delay with actual page-load detection.
-          // waitForPageLoad waits for did-finish-load (or readyState=complete).
-          // The small grace period after covers any JS-rendered fields.
+          // waitForPageLoad — JS bundle finished loading
+          // solveCloudflareIfPresent — handle CF challenge if shown
+          // waitForJobDescription — poll until Vue.js renders the description
+          //   text into data-test="Description" (replaces fixed grace period).
+          //   This is the key fix for blank descriptions: did-finish-load fires
+          //   when the bundle loads, but the description API call + render takes
+          //   longer on some pages. Polling ensures we always capture real content.
           await waitForPageLoad(win, 8000);
           await solveCloudflareIfPresent(win, botId, 0, mkProg(i + 1, jobList.length));
-          const gracePeriod = settings.jobDetailPreScrapeDelayMin ?? 500;
-          if (gracePeriod > 0) await wait(gracePeriod);
+          await waitForJobDescription(win, 12000);
           // ──────────────────────────────────────────────────────────────────
 
           const htmlLengthCheck = await win.webContents.executeJavaScript('document.documentElement.outerHTML.length');

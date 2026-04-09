@@ -102,7 +102,7 @@ async function dumpAndExtractJobDetails(win, index, originalUrl) {
                   .replace(/<[^>]+>/g, ' ')
                   .replace(/\s+/g, ' ')
                   .trim();
-                if (text.length > 30) return text;
+                if (text.length > 30) return text.replace(/^Summary\s+/i, '').trim();
                 break;
               }
               pos = nextClose + 6; // move past </div>
