@@ -24,6 +24,24 @@ let settings;
 let jobList = [];
 let cycleCount = 0; // incremented at the start of each cycle — shown in dashboard as "Cycle #N"
 
+// ─── Freeze-safe loadURL ─────────────────────────────────────────────────────
+// win.loadURL() with no timeout is the #1 cause of scraper freezes: if a page
+// never responds (Upwork rate-limit, network hiccup, CF infinite loop) the
+// entire cycle hangs forever awaiting a Promise that never resolves.
+// This wrapper races the navigation against a hard timeout (default 35s).
+// On timeout it rejects so the calling try/catch can skip the job and move on.
+async function loadURLWithTimeout(win, url, timeout = 35000) {
+  return Promise.race([
+    win.loadURL(url),
+    new Promise((_, reject) =>
+      setTimeout(
+        () => reject(new Error(`[loadURL] Navigation timeout after ${timeout / 1000}s`)),
+        timeout
+      )
+    ),
+  ]);
+}
+
 // ─── Phase 1: Event-driven page load ─────────────────────────────────────────
 // Waits for the page to fully load (did-finish-load event) rather than sleeping
 // a fixed number of ms. Falls back to `timeout` ms if the event never fires.
@@ -195,7 +213,7 @@ async function startCycle() {
           message: `Loading ${queryName}`,
           progress: mkProg(0, 0),
         });
-        await win.loadURL(url);
+        await loadURLWithTimeout(win, url);
 
         // ── Phase 1: event-driven feed load ───────────────────────────────────
         // Order matters:
@@ -255,7 +273,7 @@ async function startCycle() {
             progress: mkProg(0, 0),
           });
 
-          await win.loadURL(pageUrl.toString());
+          await loadURLWithTimeout(win, pageUrl.toString());
           await waitForPageLoad(win, 10000);
           await solveCloudflareIfPresent(win, botId, 0, mkProg(0, 0));
           const pgReady = await waitForJobLinks(win, 15000);
@@ -322,7 +340,7 @@ async function startCycle() {
           const safeUrl = job.url.split('?')[0];
 
           try {
-            await win.loadURL(safeUrl);
+            await loadURLWithTimeout(win, safeUrl);
           } catch (err) {
             console.error('[❌ Load Error]', safeUrl, err.message);
             await sendHeartbeat({
