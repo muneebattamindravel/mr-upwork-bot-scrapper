@@ -1,8 +1,20 @@
 require('dotenv').config();
-// v2.1.0 — mkProg progress in all heartbeats including CF solver; {name,url} query objects
+// v2.2.0 — disable GPU (EC2 has no real GPU; GPU crash → executeJavaScript deadlock → freeze)
+//           execJS() timeout wrapper prevents executeJavaScript from hanging forever
 const path = require('path');
 const fs   = require('fs');
 const { app, session, screen } = require('electron');
+
+// ─── GPU / hardware acceleration ─────────────────────────────────────────────
+// EC2 instances have no real GPU. Electron's GPU process eventually crashes
+// (exit_code=-107, "GPU process isn't usable. Goodbye.") which makes subsequent
+// win.webContents.executeJavaScript() calls hang forever — deadlocking the cycle.
+// Disabling hardware acceleration before app.whenReady() prevents this entirely.
+app.disableHardwareAcceleration();
+app.commandLine.appendSwitch('disable-gpu');
+app.commandLine.appendSwitch('disable-gpu-compositing');
+app.commandLine.appendSwitch('disable-software-rasterizer');
+// ─────────────────────────────────────────────────────────────────────────────
 const { createBrowserWindow, createBrowserWindowNoLogin } = require('./modules/browser');
 const { solveCloudflareIfPresent } = require('./modules/cloudflareSolver');
 const { scrapeJobFeed } = require('./modules/feedScraper');
@@ -42,6 +54,20 @@ async function loadURLWithTimeout(win, url, timeout = 35000) {
   ]);
 }
 
+// ─── Safe executeJavaScript wrapper ──────────────────────────────────────────
+// win.webContents.executeJavaScript() can hang forever if the render process is
+// in a bad state (e.g. after a GPU crash). This wrapper races the call against a
+// hard timeout so a deadlocked renderer can't freeze the whole cycle.
+async function execJS(win, code, timeout = 5000) {
+  return Promise.race([
+    win.webContents.executeJavaScript(code),
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error(`[execJS] Timeout after ${timeout}ms`)), timeout)
+    ),
+  ]);
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 // ─── Phase 1: Event-driven page load ─────────────────────────────────────────
 // Waits for the page to fully load (did-finish-load event) rather than sleeping
 // a fixed number of ms. Falls back to `timeout` ms if the event never fires.
@@ -49,7 +75,7 @@ async function loadURLWithTimeout(win, url, timeout = 35000) {
 // attached the listener (can happen on fast loads / cached pages).
 async function waitForPageLoad(win, timeout = 8000) {
   try {
-    const readyState = await win.webContents.executeJavaScript('document.readyState');
+    const readyState = await execJS(win, 'document.readyState', 3000);
     if (readyState === 'complete') return;
   } catch { /* ignore — page context may not be ready yet */ }
 
@@ -72,12 +98,12 @@ async function waitForJobDescription(win, timeout = 12000) {
   const start = Date.now();
   while (Date.now() - start < timeout) {
     try {
-      const len = await win.webContents.executeJavaScript(`
+      const len = await execJS(win, `
         (() => {
           const el = document.querySelector('[data-test="Description"]');
           return el ? (el.innerText || '').trim().length : 0;
         })()
-      `);
+      `, 4000);
       if (len > 20) {
         log(`[Detail] Description rendered in DOM (${len} chars)`);
         return true;
@@ -100,9 +126,10 @@ async function waitForJobLinks(win, timeout = 15000) {
     try {
       // Upwork job URLs: /jobs/Title_~ID or /jobs/~ID — always contain ~ but
       // never directly after /jobs/ in slug form. Use /jobs/ + ~ filter.
-      const count = await win.webContents.executeJavaScript(
+      const count = await execJS(win,
         `Array.from(document.querySelectorAll('a[href*="/jobs/"]'))
-           .filter(a => { const p = a.href.split('?')[0]; return p.includes('~') && !p.includes('/nx/'); }).length`
+           .filter(a => { const p = a.href.split('?')[0]; return p.includes('~') && !p.includes('/nx/'); }).length`,
+        4000
       );
       if (count > 0) {
         log(`[Feed] Job links appeared in DOM (${count} found)`);
@@ -237,7 +264,7 @@ async function startCycle() {
         // Save feed page HTML dump for debugging (non-blocking).
         // Files saved to: mr-upwork-bot-scrapper/feed-dumps/feed_dump_qi<N>_<timestamp>.html
         try {
-          const feedHtml = await win.webContents.executeJavaScript('document.documentElement.outerHTML');
+          const feedHtml = await execJS(win, 'document.documentElement.outerHTML', 8000);
           const dumpName = `feed_dump_q${qi + 1}_${Date.now()}.html`;
           fs.promises.writeFile(path.join(FEED_DUMP_DIR, dumpName), feedHtml, 'utf-8')
             .then(() => log(`[FeedDump] Saved: ${dumpName}`))
@@ -284,14 +311,14 @@ async function startCycle() {
 
           // Extract links directly (same logic as feedScraper.js)
           const existingUrls = new Set(jobList.map(j => j.url));
-          const pageJobs = await win.webContents.executeJavaScript(`
+          const pageJobs = await execJS(win, `
             Array.from(document.querySelectorAll('a[href*="/jobs/"]'))
               .filter(a => {
                 const p = a.href.split('?')[0];
                 return p.includes('~') && !p.includes('/nx/') && a.innerText.trim().length > 10;
               })
               .map(a => ({ title: a.innerText.trim(), url: a.href.split('?')[0] }));
-          `);
+          `, 8000);
 
           const newLinks = (pageJobs || []).filter(j => !existingUrls.has(j.url));
           log(`[Feed] "${queryName}" page ${pg}: ${pageJobs.length} found, ${newLinks.length} new`);
@@ -366,7 +393,7 @@ async function startCycle() {
           await waitForJobDescription(win, 12000);
           // ──────────────────────────────────────────────────────────────────
 
-          const htmlLengthCheck = await win.webContents.executeJavaScript('document.documentElement.outerHTML.length');
+          const htmlLengthCheck = await execJS(win, 'document.documentElement.outerHTML.length', 5000).catch(() => 0);
           const htmlThreshold = settings.htmlLengthThreshold || 10000;
 
           if (htmlLengthCheck < htmlThreshold) {
@@ -389,7 +416,7 @@ async function startCycle() {
 
             // Save HTML dump to skipped-dumps/ for post-analysis
             try {
-              const skippedHtml = await win.webContents.executeJavaScript('document.documentElement.outerHTML');
+              const skippedHtml = await execJS(win, 'document.documentElement.outerHTML', 8000);
               const urlSlug = safeUrl.replace(/[^a-zA-Z0-9]/g, '_').slice(-60);
               const dumpName = `skipped_${Date.now()}_${reason}_${urlSlug}.html`;
               fs.promises.writeFile(path.join(SKIPPED_DUMP_DIR, dumpName), skippedHtml, 'utf-8')
