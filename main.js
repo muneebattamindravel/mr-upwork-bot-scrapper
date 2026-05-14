@@ -23,11 +23,13 @@ const { sendHeartbeat, startHeartbeatInterval } = require('./modules/heartbeat')
 const { /*isLoginPage,*/ shouldVisitJob, postJobToBackend, wait, log } = require('./modules/utils');
 const { getBotSettings } = require('./modules/botSettings');
 
-// Ensure dump directories exist at startup
-const FEED_DUMP_DIR    = path.join(__dirname, 'feed-dumps');
-const SKIPPED_DUMP_DIR = path.join(__dirname, 'skipped-dumps');
-if (!fs.existsSync(FEED_DUMP_DIR))    fs.mkdirSync(FEED_DUMP_DIR);
-if (!fs.existsSync(SKIPPED_DUMP_DIR)) fs.mkdirSync(SKIPPED_DUMP_DIR);
+// HTML dumps disabled — each capture pulls the full page HTML out of the
+// renderer (often megabytes per write) and saturates IO on the small EC2.
+// Uncomment if you need to debug a new extraction failure mode.
+// const FEED_DUMP_DIR    = path.join(__dirname, 'feed-dumps');
+// const SKIPPED_DUMP_DIR = path.join(__dirname, 'skipped-dumps');
+// if (!fs.existsSync(FEED_DUMP_DIR))    fs.mkdirSync(FEED_DUMP_DIR);
+// if (!fs.existsSync(SKIPPED_DUMP_DIR)) fs.mkdirSync(SKIPPED_DUMP_DIR);
 
 const botId = process.env.BOT_ID || 'bot-001';
 
@@ -261,17 +263,17 @@ async function startCycle() {
         }
         // ──────────────────────────────────────────────────────────────────────
 
-        // Save feed page HTML dump for debugging (non-blocking).
-        // Files saved to: mr-upwork-bot-scrapper/feed-dumps/feed_dump_qi<N>_<timestamp>.html
-        try {
-          const feedHtml = await execJS(win, 'document.documentElement.outerHTML', 8000);
-          const dumpName = `feed_dump_q${qi + 1}_${Date.now()}.html`;
-          fs.promises.writeFile(path.join(FEED_DUMP_DIR, dumpName), feedHtml, 'utf-8')
-            .then(() => log(`[FeedDump] Saved: ${dumpName}`))
-            .catch(e => log('[FeedDump] Write failed:', e.message));
-        } catch (e) {
-          log('[FeedDump] Capture failed:', e.message);
-        }
+        // Feed page HTML dump — disabled (heavy IO, only useful for debugging).
+        // Uncomment to capture full feed HTML to feed-dumps/feed_dump_q<N>_<timestamp>.html
+        // try {
+        //   const feedHtml = await execJS(win, 'document.documentElement.outerHTML', 8000);
+        //   const dumpName = `feed_dump_q${qi + 1}_${Date.now()}.html`;
+        //   fs.promises.writeFile(path.join(FEED_DUMP_DIR, dumpName), feedHtml, 'utf-8')
+        //     .then(() => log(`[FeedDump] Saved: ${dumpName}`))
+        //     .catch(e => log('[FeedDump] Write failed:', e.message));
+        // } catch (e) {
+        //   log('[FeedDump] Capture failed:', e.message);
+        // }
 
         await sendHeartbeat({
           status: 'scraping_feed',
@@ -414,17 +416,19 @@ async function startCycle() {
             const reason = !details ? 'scraper-null' : 'no-title';
             log(`[Skip] No extractable content — ${reason} — url=${safeUrl}`);
 
-            // Save HTML dump to skipped-dumps/ for post-analysis
-            try {
-              const skippedHtml = await execJS(win, 'document.documentElement.outerHTML', 8000);
-              const urlSlug = safeUrl.replace(/[^a-zA-Z0-9]/g, '_').slice(-60);
-              const dumpName = `skipped_${Date.now()}_${reason}_${urlSlug}.html`;
-              fs.promises.writeFile(path.join(SKIPPED_DUMP_DIR, dumpName), skippedHtml, 'utf-8')
-                .then(() => log(`[SkippedDump] Saved: ${dumpName}`))
-                .catch(e => log('[SkippedDump] Write failed:', e.message));
-            } catch (e) {
-              log('[SkippedDump] Capture failed:', e.message);
-            }
+            // Skipped-job HTML dump — disabled (heavy IO). The common failure modes
+            // (login wall / private listing) are well-understood now. Re-enable
+            // when investigating a new extraction failure.
+            // try {
+            //   const skippedHtml = await execJS(win, 'document.documentElement.outerHTML', 8000);
+            //   const urlSlug = safeUrl.replace(/[^a-zA-Z0-9]/g, '_').slice(-60);
+            //   const dumpName = `skipped_${Date.now()}_${reason}_${urlSlug}.html`;
+            //   fs.promises.writeFile(path.join(SKIPPED_DUMP_DIR, dumpName), skippedHtml, 'utf-8')
+            //     .then(() => log(`[SkippedDump] Saved: ${dumpName}`))
+            //     .catch(e => log('[SkippedDump] Write failed:', e.message));
+            // } catch (e) {
+            //   log('[SkippedDump] Capture failed:', e.message);
+            // }
 
             await sendHeartbeat({
               status: 'job_filtered',
