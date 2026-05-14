@@ -1,4 +1,5 @@
 require('dotenv').config();
+// Electron-based Upwork scraper — entry point for main.js (renderer).
 // v2.2.0 — disable GPU (EC2 has no real GPU; GPU crash → executeJavaScript deadlock → freeze)
 //           execJS() timeout wrapper prevents executeJavaScript from hanging forever
 const path = require('path');
